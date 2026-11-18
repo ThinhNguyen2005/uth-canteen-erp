@@ -151,6 +151,12 @@ activemq-data/
 
 # Environments
 .env
+.env.*
+!.env.example
+config/odoo.conf
+*.sql
+*.dump
+*.backup
 .envrc
 .venv
 env/
