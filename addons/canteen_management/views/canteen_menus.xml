@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Root Menu for UTH Canteen ERP -->
+    <menuitem id="menu_canteen_root"
+              name="Canteen Management"
+              sequence="25"/>
+
+    <menuitem id="menu_canteen_operations"
+              name="Operations"
+              parent="menu_canteen_root"
+              sequence="10"/>
+
+    <menuitem id="menu_canteen_configuration"
+              name="Configuration"
+              parent="menu_canteen_root"
+              sequence="90"/>
+</odoo>
