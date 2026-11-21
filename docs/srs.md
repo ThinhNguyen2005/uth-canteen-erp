@@ -246,15 +246,15 @@ flowchart TD
 ### UC01: Quản lý Thực đơn & Bật/Tắt Món ăn (Menu & Availability Management)
 * **Tác nhân chính:** Quản lý Căn tin, Nhân viên Bếp.
 * **Điều kiện tiên quyết (Pre-conditions):** Người dùng đăng nhập tài khoản Odoo có quyền nhóm Quản lý căn tin (`group_canteen_manager`) hoặc Bếp (`group_canteen_kitchen`).
-* **Điều kiện sau khi thực hiện (Post-conditions):** Món ăn được cập nhật thông tin trong bảng `product.template`; cờ `canteen_available` phản ánh chính xác trạng thái trên menu QR và POS.
+* **Điều kiện sau khi thực hiện (Post-conditions):** Món ăn được cập nhật thông tin trong bảng `product.template`; các cờ `canteen_published` (Quản lý) và `canteen_is_out_of_stock` (Bếp) phản ánh chính xác trạng thái trên menu QR và POS.
 * **Sự kiện kích hoạt (Trigger):** Đầu ngày quản lý cập nhật thực đơn; hoặc trong ca nhân viên bếp phát hiện hết nguyên liệu của một món.
 * **Luồng sự kiện chính (Main Flow):**
   1. Người dùng truy cập menu **Căn tin UTH $\rightarrow$ Món ăn & Thực đơn**.
-  2. Hệ thống hiển thị danh mục món kèm bộ lọc: Danh mục (`canteen_category`), Đơn giá (`list_price`), Trạng thái bán (`canteen_available`).
-  3. Để tạo mới món: Quản lý nhấn "Mới", nhập Tên món, Đơn giá, Tải ảnh món, chọn Nhóm món (`rice`, `noodle`, `drink`, `snack`), tích chọn `available_in_pos = True` và `canteen_available = True`.
-  4. Quản lý bấm "Lưu". Món ăn ngay lập tức có hiệu lực trên toàn hệ thống.
-  5. Khi hết món trong ca phục vụ: Nhân viên bếp truy cập danh sách, tìm món và gạt tắt nút công tắc `canteen_available` sang `False`.
-  6. Hệ thống cập nhật cơ sở dữ liệu và phát tín hiệu đồng bộ. Menu khách quét QR tự động làm mờ món và chặn đặt ngay lập tức.
+  2. Hệ thống hiển thị danh mục món kèm bộ lọc: Danh mục (`canteen_category`), Đơn giá (`list_price`), Trạng thái hiển thị (`canteen_published`), Trạng thái hết hàng (`canteen_is_out_of_stock`).
+  3. Để tạo mới món: Quản lý nhấn "Mới", nhập Tên món, Đơn giá, Tải ảnh món, chọn Nhóm món (`rice`, `noodle`, `drink`, `snack`), tích chọn `available_in_pos = True` và `canteen_published = True`.
+  4. Quản lý bấm "Lưu". Món ăn ngay lập tức có hiệu lực và xuất hiện trên thực đơn QR.
+  5. Khi hết món trong ca phục vụ: Nhân viên bếp truy cập giao diện KDS hoặc danh sách món, nhấn nút chuyên dụng "Báo hết món" để chuyển `canteen_is_out_of_stock` sang `True` (Bếp không có quyền sửa thông tin gốc hay giá của món).
+  6. Hệ thống cập nhật cơ sở dữ liệu và phát tín hiệu đồng bộ. Menu khách quét QR vẫn hiển thị món nhưng tự động làm mờ (opacity 0.5), gắn nhãn **HẾT MÓN** và khóa nút đặt món ngay lập tức.
 * **Luồng thay thế (Alternative Flows):**
   * *Alt 1 — Điều chỉnh giá hàng loạt:* Quản lý chọn danh sách nhiều món, chọn "Hành động $\rightarrow$ Cập nhật giá", áp dụng đơn giá mới.
 * **Luồng ngoại lệ (Exception Flows):**
@@ -299,24 +299,30 @@ flowchart TD
 
 ---
 
-### UC04: Quét QR Xem Thực đơn & Đặt món tại Bàn / Mang đi (QR Code Ordering)
+### UC04: Quét QR Xem Thực đơn & Đặt món tại Bàn / Mang đi (QR Code Ordering & Idempotent Submission)
 * **Tác nhân chính:** Khách hàng (Sinh viên / Giảng viên).
-* **Điều kiện tiên quyết (Pre-conditions):** Khách hàng sử dụng điện thoại có camera quét mã QR dán trên bàn ăn hoặc tại quầy mang đi; bàn ăn đang mở (`active = True`).
-* **Điều kiện sau khi thực hiện (Post-conditions):** Bản ghi `pos.order` được tạo ở trạng thái `service_state = 'received'`, `state = 'draft'`; gửi tín hiệu chuông báo cho bếp.
+* **Điều kiện tiên quyết (Pre-conditions):** Khách hàng sử dụng điện thoại có camera quét mã QR dán trên bàn ăn (`restaurant.table.qr_token`) hoặc tại quầy Mang đi (Bàn ảo Takeaway); bàn ăn đang mở (`active = True`); có ít nhất một phiên POS đang hoạt động (`state = 'opened'`).
+* **Điều kiện sau khi thực hiện (Post-conditions):** Bản ghi `pos.order` được tạo ở trạng thái `service_state = 'received'`, `state = 'draft'`; lưu trữ `idempotency_key` và snapshot `floor_id`; gửi tín hiệu chuông báo cho bếp qua Odoo Bus.
 * **Sự kiện kích hoạt (Trigger):** Khách hàng quét mã QR qua ứng dụng camera hoặc Zalo.
 * **Luồng sự kiện chính (Main Flow):**
   1. Trình duyệt mở đường dẫn công khai `/canteen/qr/<qr_token>`.
-  2. Hệ thống kiểm tra mã `qr_token` hợp lệ, tự động gán thông tin Bàn ăn (`table_id`) và trả về giao diện thực đơn các món đang bán (`canteen_available = True`).
-  3. Khách hàng duyệt menu, chọn món, số lượng, chọn hình thức (`dine_in` hoặc `takeaway`), nhập ghi chú khẩu vị (`customer_note`).
-  4. Khách hàng nhấn nút "Gửi Đơn Đặt Món".
-  5. Hệ thống xác thực dữ liệu: Kiểm tra từng món còn được bán hay không.
-  6. Hệ thống tạo đơn hàng mới trên Odoo: `pos.order` với `service_state = 'received'`, sinh mã Token tra cứu ngẫu nhiên (UUID) cho phiên của khách, trả về màn hình theo dõi đơn hàng.
-  7. Màn hình KDS của Bếp kích hoạt chuông reo báo có đơn mới.
+  2. Hệ thống kiểm tra mã `qr_token` hợp lệ, tự động gán thông tin Bàn ăn (`table_id`), Sảnh (`floor_id = table.floor_id`) và trả về giao diện thực đơn các món được phép hiển thị (`canteen_published = True`).
+  3. **Hiển thị món hết hàng trực quan:** Các món đang tạm hết (`canteen_is_out_of_stock = True`) vẫn xuất hiện trên thực đơn nhưng tự động bị làm mờ (opacity 0.5), gắn nhãn **HẾT MÓN** và khóa nút thêm vào giỏ.
+  4. Khách hàng duyệt menu, chọn món, số lượng, chọn hình thức phục vụ (`dine_in` hoặc `takeaway`), nhập ghi chú khẩu vị (`customer_note`).
+  5. Ứng dụng client tự động sinh một mã định danh yêu cầu duy nhất `idempotency_key` (chuỗi UUIDv4) và chụp lại đơn giá niêm yết mà khách đang nhìn thấy (`expected_price_unit`) cho từng dòng món.
+  6. Khách hàng nhấn nút "Gửi Đơn Đặt Món".
+  7. **Hệ thống thực thi Kiểm tra 4 Bước Phía Server:**
+     * *Kiểm tra Idempotency:* Nếu `idempotency_key` đã tồn tại và khớp nội dung giỏ hàng $\rightarrow$ Hệ thống chuyển sang Luồng Ngoại lệ **Ex 3** (trả về đơn cũ, không tạo đơn mới). Nếu khác nội dung giỏ hàng $\rightarrow$ Chuyển sang Luồng Ngoại lệ **Ex 4**.
+     * *Kiểm tra Nguyên tử (Atomic Validation):* Hệ thống đối soát toàn bộ các món trong đơn. Nếu phát hiện bất kỳ món nào đã bị bếp đánh dấu hết (`canteen_is_out_of_stock = True`) hoặc đơn giá niêm yết trên hệ thống đã thay đổi so với `expected_price_unit` $\rightarrow$ Chuyển sang Luồng Ngoại lệ **Ex 2** (từ chối toàn bộ đơn hàng an toàn).
+     * *Khởi tạo Đơn hàng An toàn Đa luồng:* Hệ thống tạo bản ghi `pos.order` với `service_state = 'received'`, sinh mã Token tra cứu ngẫu nhiên (UUIDv4) cho phiên của khách, chụp snapshot `floor_id` và bắt ngoại lệ va chạm khóa để đảm bảo an toàn đa luồng trên Odoo worker.
+  8. Màn hình KDS của Bếp kích hoạt chuông reo báo có đơn mới. Trình duyệt khách hàng chuyển sang màn hình theo dõi tiến độ món theo thời gian thực.
 * **Luồng thay thế (Alternative Flows):**
-  * *Alt 1 — Đặt món mang đi tại quầy:* Khách quét mã QR tại quầy Takeaway, hệ thống gán `fulfillment_type = 'takeaway'`, không gán `table_id`.
+  * *Alt 1 — Đặt món mang đi tại quầy Takeaway:* Khách quét mã QR tại quầy Takeaway (Bàn ảo hệ thống), hệ thống tự động khóa `fulfillment_type = 'takeaway'` và trỏ tới bản ghi Bàn ảo tương ứng.
 * **Luồng ngoại lệ (Exception Flows):**
   * *Ex 1 — Mã QR không hợp lệ hoặc bàn đã đóng (`active = False`):* Hệ thống trả về giao diện thông báo lỗi: "Mã bàn không tồn tại hoặc bàn ăn đang tạm dừng phục vụ. Vui lòng liên hệ nhân viên căn tin". Chặn mọi thao tác đặt món.
-  * *Ex 2 — Món vừa hết ngay lúc khách nhấn gửi đơn:* Trong thời gian khách chọn món, bếp vừa tắt `canteen_available = False` cho món đó. Hệ thống từ chối tạo đơn, giữ nguyên giỏ hàng và hiển thị popup cảnh báo: "Món [Tên món] vừa hết hàng. Quý khách vui lòng chọn món khác".
+  * *Ex 2 — Kiểm tra Nguyên tử Thất bại do hết món hoặc đổi giá (Atomic Validation Failure — HTTP 409):* Trong lúc khách đang chọn món, bếp vừa báo hết hàng hoặc quản lý vừa điều chỉnh giá niêm yết. Hệ thống từ chối toàn bộ đơn hàng (Rollback All), giữ nguyên giỏ hàng của khách và hiển thị popup cảnh báo chi tiết theo chuẩn RFC 7807 liệt kê rõ ràng từng món bị lỗi (món nào hết, món nào đổi từ giá bao nhiêu sang bao nhiêu). Khách hàng điều chỉnh lại giỏ hàng hoặc xác nhận giá mới rồi nhấn gửi lại.
+  * *Ex 3 — Khách bấm gửi lại đơn trùng lặp (Idempotency Replay — HTTP 200 OK):* Do mạng chập chờn hoặc khách bấm đúp nút gửi, client gửi lại cùng mã `idempotency_key` và cùng nội dung giỏ hàng. Server không tạo thêm đơn mới mà trả về thông tin đơn hàng đã tiếp nhận trước đó, đưa khách về màn hình theo dõi đơn cũ.
+  * *Ex 4 — Xung đột Idempotency Key (Idempotency Payload Mismatch — HTTP 409):* Client gửi lại mã `idempotency_key` đã dùng nhưng nội dung món ăn bị thay đổi. Server từ chối xử lý, trả về lỗi xung đột khóa và yêu cầu client khởi tạo yêu cầu mới.
 
 ---
 
@@ -510,15 +516,22 @@ sequenceDiagram
     alt Token không hợp lệ hoặc bàn đã đóng
         Odoo-->>QR: Trả về trang báo lỗi "Bàn không khả dụng"
     else Token hợp lệ
-        Odoo-->>QR: Trả về menu các món có canteen_available=True
+        Odoo-->>QR: Trả về menu các món canteen_published=True (kèm cờ is_out_of_stock)
         Khach->>QR: Chọn món, số lượng, hình thức (Dine-in/Takeaway), ghi chú
+        QR->>QR: Sinh idempotency_key (UUIDv4) & Chụp expected_price_unit
         Khach->>QR: Nhấn "Gửi Đơn Đặt Món"
-        QR->>Odoo: POST /canteen/order/submit (Payload giỏ hàng)
-        Odoo->>Odoo: Tạo pos.order (service_state='received', state='draft')
-        Odoo-->>QR: Cấp mã Token tra cứu đơn (UUID) & chuyển màn hình theo dõi
-        Odoo->>Bus: Phát thông điệp sự kiện 'canteen_new_order'
-        Bus-->>Bep: KDS nhận sự kiện -> Phát chuông Beep 3 hồi & hiện thẻ Vàng
-    end
+        QR->>Odoo: POST /canteen/api/order/create (idempotency_key, lines, expected_prices)
+        alt Đơn gửi lặp lại (Trùng idempotency_key & trùng payload hash)
+            Odoo-->>QR: 200 OK (Idempotent Replay) -> Trả về thông tin đơn cũ
+        else Phát hiện hết món hoặc lệch giá (Atomic Validation Failed)
+            Odoo-->>QR: 409 Conflict (RFC 7807) kèm danh sách invalid_items -> Rollback All
+            QR-->>Khach: Hiện cảnh báo chi tiết, giữ nguyên giỏ hàng để khách sửa
+        else Dữ liệu hợp lệ toàn vẹn
+            Odoo->>Odoo: Tạo pos.order (service_state='received', state='draft')
+            Odoo-->>QR: 201 Created (Cấp access_token UUIDv4 & chuyển màn hình theo dõi)
+            Odoo->>Bus: Phát thông điệp sự kiện 'canteen_new_order'
+            Bus-->>Bep: KDS nhận sự kiện -> Phát chuông Beep 3 hồi & hiện thẻ Vàng
+        end
 
     Note over Bep,ThuNgan: 2. Xử lý Chế biến tại Bếp (KDS)
     alt Bếp đủ nguyên liệu chế biến bình thường
@@ -613,6 +626,7 @@ Nhằm đảm bảo nguyên tắc **Zero Defect**, mọi yêu cầu phi chức n
 | **NFR-P02** | Tốc độ phản hồi thao tác POS | Thao tác chạm chọn món, đổi số lượng và bấm thanh toán phản hồi tức thời $\le 0.5$ giây trên mạng LAN quầy thu ngân. | Dùng công cụ đo độ trễ Client Network Timing trên trình duyệt POS và Odoo Web Profiler (`--dev=profile`). |
 | **NFR-P03** | Khả năng chịu tải đồng thời giờ cao điểm | Hệ thống đáp ứng tối thiểu **50 người dùng đồng thời (50 CCU)** quét QR gửi đơn và truy vấn menu trong khung giờ cao điểm ca trưa (11h30 - 12h30). | Sử dụng công cụ kiểm thử tải **k6** hoặc **Locust**. Kịch bản: 50 Virtual Users gửi liên tục request GET menu và POST order trong 15 phút. **Tiêu chí Pass:** Tỷ lệ lỗi (Error Rate) $< 1\%$, thời gian đáp ứng P95 $< 1.5$ giây, CPU Odoo container $< 80\%$. |
 | **NFR-P04** | Xử lý khóa dòng chống tranh chấp suất ăn | Không xảy ra hiện tượng bán vượt số lượng suất (Overbooking) khi 20 người dùng cùng bấm đặt 1 suất ăn còn lại duy nhất tại cùng một mili-giây. | Chạy bài kiểm thử tự động Concurrency Test Suite bằng Python đa luồng (`concurrent.futures` với 20 workers gửi đồng thời). **Tiêu chí Pass:** Đúng 1 bản ghi được `confirmed`, 19 bản ghi nhận lỗi "Hết chỗ", tổng `booked_count` không vượt quá `capacity`. |
+| **NFR-P05** | Chống đặt trùng đơn và xử lý đa luồng (Idempotency Safe) | Không xảy ra lỗi tạo trùng đơn hàng hoặc crash HTTP 500 khi 2 HTTP POST request mang cùng `idempotency_key` dội vào 2 Odoo worker trong cùng 1 mili-giây (do mạng lag hoặc bấm đúp). | Chạy kịch bản kiểm thử đa luồng bắn đồng thời 2 request trùng `idempotency_key`. **Tiêu chí Pass:** Đúng 1 bản ghi `pos.order` được tạo trong CSDL, cả 2 request đều nhận phản hồi thành công (1 request 201 Created, 1 request 200 OK Replay), 0 lỗi crash 500. |
 
 ---
 
