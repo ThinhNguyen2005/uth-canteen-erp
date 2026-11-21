@@ -75,8 +75,11 @@ erDiagram
         string name "Mã hóa đơn nội bộ Odoo (Unique)"
         string pos_reference "Mã tham chiếu POS"
         string access_token "UUIDv4 tra cứu công khai cho khách (Unique, Index)"
+        string idempotency_key "UUIDv4 chống đặt trùng từ client (Unique, Index, Copy=False)"
+        string request_hash "SHA-256 hash của giỏ hàng để chống tráo đổi nội dung đơn"
         int session_id FK "Phiên POS đang mở (pos.session, Not Null)"
         int table_id FK "Bàn phục vụ (restaurant.table, Nullable)"
+        int floor_id FK "Sảnh / Khu vực snapshot từ bàn (restaurant.floor, Stored)"
         int partner_id FK "Khách hàng (res.partner, Nullable)"
         int currency_id FK "Đơn vị tiền tệ (res.currency)"
         string fulfillment_type "Hình thức: dine_in (Tại bàn) / takeaway (Mang đi)"
@@ -109,7 +112,8 @@ erDiagram
         int id PK
         string name "Tên món ăn / đồ uống"
         decimal list_price "Đơn giá niêm yết"
-        boolean canteen_available "Bật/Tắt bán tại căn tin"
+        boolean canteen_published "Quản lý đưa món vào Thực đơn Căn tin (Hiển thị Web QR)"
+        boolean canteen_is_out_of_stock "Bếp đánh dấu Tạm hết món (Vẫn hiện nhưng mờ & khóa đặt)"
         string canteen_category "rice, noodle, drink, snack, fastfood"
         boolean available_in_pos "Có sẵn trong POS"
         boolean active "Hiệu lực"
@@ -153,6 +157,17 @@ erDiagram
 ### 3.1. Phân hệ Bàn ăn & Sảnh (`restaurant.table` & `restaurant.floor`)
 Kế thừa module `pos_restaurant`. Quản lý bàn ăn và mã định danh QR.
 
+> [!IMPORTANT]
+> **Quy chuẩn Định danh Mã QR (Table-Only QR Spec):**
+> 1. **Chỉ dùng QR theo từng bàn:** Mã QR được dán cố định trên từng mặt bàn ăn (`restaurant.table.qr_token`). Tuyệt đối **không dùng mã QR chung theo khu vực/sảnh** để tránh nhập nhằng vị trí thực khách ngồi.
+> 2. **Khu vực / Sảnh tự động suy dẫn:** Mọi thông tin về sảnh phục vụ được tự động truy xuất thông qua mối quan hệ Many2one `restaurant.table.floor_id`.
+> 3. **Mô hình Bàn ảo Quầy Mang đi (Virtual Takeaway Table Pattern):** Để phục vụ khách hàng mua mang về (Takeaway) mà không ngồi vào bàn vật lý, hệ thống khởi tạo sẵn một bản ghi Bàn ảo hệ thống trong bảng `restaurant.table`:
+>    - `name = "Quầy Mang Đi (Takeaway)"`
+>    - `floor_id = [ID Sảnh chính]`
+>    - `qr_token = "uth-qr-takeaway-counter-vtable"` (Mã QR cố định in dán tại quầy chờ)
+>    - `seats = 999`, `active = True`
+>    Khi khách quét mã QR tại quầy này, client tự động khóa hình thức phục vụ `fulfillment_type = 'takeaway'`.
+
 | Tên trường (Field) | Tên kỹ thuật Odoo | Kiểu dữ liệu ORM | Bắt buộc | Default / Attributes | Quy tắc nghiệp vụ & Ràng buộc Kỹ thuật |
 | :--- | :--- | :--- | :---: | :--- | :--- |
 | Tên bàn | `name` | `fields.Char` | Có | size=64 | Tên bàn hiển thị trên POS và màn hình QR (VD: "Bàn A-01"). |
@@ -179,7 +194,8 @@ Kế thừa model chuẩn `product.template` của Odoo.
 | Tên món ăn | `name` | `fields.Char` | Có | translate=True, index=True | Tên món hiển thị trên Web QR và hóa đơn POS. |
 | Giá niêm yết | `list_price` | `fields.Monetary` | Có | currency_field='currency_id' | Giá bán cho khách (VND). Ràng buộc SQL: `CHECK(list_price >= 0)`. |
 | Tiền tệ | `currency_id` | `fields.Many2one` | Có | related='company_id.currency_id', store=True | Tiền tệ mặc định hệ thống (VND, 0 chữ số thập phân). |
-| Bật bán căn tin | `canteen_available` | `fields.Boolean` | Có | default=True, index=True, tracking=True | Bếp bật/tắt tức thời khi hết món. Khi `False`, route QR tự động làm mờ và chặn đặt món. |
+| Bật bán trên Menu | `canteen_published` | `fields.Boolean` | Có | default=True, index=True, tracking=True | **Chỉ Quản lý (Manager) được phép sửa.** Quyết định món có xuất hiện trên Web QR và POS hay không. |
+| Tạm hết món (Bếp) | `canteen_is_out_of_stock` | `fields.Boolean` | Có | default=False, index=True, tracking=True | **Nhân viên Bếp (Kitchen) được phép thao tác.** Khi bật `True`, món vẫn hiển thị trên Menu QR nhưng tự động làm mờ (opacity 0.5), gắn nhãn "HẾT MÓN" và vô hiệu hóa nút đặt. |
 | Phân loại món | `canteen_category` | `fields.Selection` | Có | default='rice', index=True | Lựa chọn: `[('rice', 'Cơm'), ('noodle', 'Bún/Phở/Mì'), ('drink', 'Đồ uống'), ('snack', 'Ăn vặt'), ('fastfood', 'Đồ ăn nhanh')]`. |
 | Có sẵn trong POS | `available_in_pos` | `fields.Boolean` | Có | default=True | Bắt buộc `True` để món xuất hiện trên POS của thu ngân. |
 | Hiệu lực | `active` | `fields.Boolean` | Có | default=True | Ẩn món khi ngừng kinh doanh dài hạn. |
@@ -193,8 +209,11 @@ Kế thừa model `pos.order` chuẩn Odoo. Kết nối trực tiếp với nhà
 | :--- | :--- | :--- | :---: | :--- | :--- |
 | Mã tham chiếu nội bộ | `name` | `fields.Char` | Có | readonly=True, copy=False, default='/' | Sinh tự động theo quy tắc POS sequence Odoo (VD: `Order 00001-001-0001`). |
 | Token tra cứu công khai | `access_token` | `fields.Char` | Có | size=64, index=True, copy=False, readonly=True | UUIDv4 ngẫu nhiên cấp cho khách quét QR để theo dõi tiến độ món mà không lộ `id` đơn. |
+| Khóa chống đặt trùng | `idempotency_key` | `fields.Char` | Có | size=64, index=True, copy=False, readonly=True | UUIDv4 do Client sinh ra. Bắt buộc `copy=False` để không lỗi Unique khi nhân bản đơn trên Odoo. Chống tạo 2 đơn khi khách bấm đúp hoặc mạng lag retry. |
+| Băm giỏ hàng đối soát | `request_hash` | `fields.Char` | Có | size=64, copy=False, readonly=True | SHA-256 hash của JSON dòng món. Dùng để phát hiện hành vi tái sử dụng key nhưng tráo đổi giỏ hàng (Payload Tampering). |
 | Phiên POS phụ trách | `session_id` | `fields.Many2one` | Có | comodel='pos.session', ondelete='restrict', index=True | Liên kết phiên làm việc đang mở. Ràng buộc: bắt buộc phải là phiên có `state = 'opened'`. |
-| Bàn phục vụ | `table_id` | `fields.Many2one` | ĐK | comodel='restaurant.table', ondelete='set null', index=True | Bắt buộc nếu `fulfillment_type = 'dine_in'`. Để trống nếu `takeaway`. |
+| Bàn phục vụ | `table_id` | `fields.Many2one` | ĐK | comodel='restaurant.table', ondelete='set null', index=True | Bắt buộc nếu `fulfillment_type = 'dine_in'`. Với đơn mang đi, trỏ tới Bàn ảo quầy Takeaway. |
+| Khu vực / Sảnh | `floor_id` | `fields.Many2one` | Có | comodel='restaurant.floor', related='table_id.floor_id', store=True, readonly=True, index=True | Snapshot khu vực phục vụ tại thời điểm tạo đơn, chống mất dấu vết lịch sử khi bàn bị sửa/xóa. |
 | Khách hàng | `partner_id` | `fields.Many2one` | Không | comodel='res.partner', ondelete='set null', index=True | Người đặt món (nếu có tài khoản hoặc cung cấp SĐT/Tên). |
 | Hình thức phục vụ | `fulfillment_type` | `fields.Selection` | Có | default='dine_in', index=True | `[('dine_in', 'Ăn tại bàn'), ('takeaway', 'Mang đi')]`. |
 | Trạng thái bếp | `service_state` | `fields.Selection` | Có | default='received', index=True, tracking=True | `[('received', 'Mới nhận'), ('preparing', 'Đang nấu'), ('ready', 'Sẵn sàng phục vụ'), ('completed', 'Đã giao khách'), ('cancelled', 'Đã hủy món')]`. |
@@ -207,6 +226,7 @@ Kế thừa model `pos.order` chuẩn Odoo. Kết nối trực tiếp với nhà
   ```python
   _sql_constraints = [
       ('unique_access_token', 'UNIQUE(access_token)', 'Access token của đơn hàng phải là duy nhất!'),
+      ('unique_idempotency_key', 'UNIQUE(idempotency_key)', 'Idempotency Key của đơn hàng phải là duy nhất trên toàn hệ thống!'),
   ]
   ```
 
@@ -482,16 +502,20 @@ sequenceDiagram
 * **Kiểm tra Điều kiện Tiên quyết:**
   * `restaurant.table` ứng với `qr_token` phải tồn tại và `active = True`.
   * Phải tồn tại ít nhất 1 phiên POS `pos.session` thuộc cấu hình Căn tin đang ở trạng thái `state = 'opened'`. Nếu không có, hiển thị thông báo: *"Căn tin hiện chưa mở ca bán hàng. Vui lòng liên hệ thu ngân!"*.
+* **Quy tắc Hiển thị Thực đơn (Menu Display & Out-of-Stock UX):**
+  * Hệ thống truy vấn toàn bộ món ăn thỏa mãn điều kiện: `canteen_published = True` và `active = True`.
+  * **Món đã hết hàng (`canteen_is_out_of_stock = True`) vẫn được trả về và hiển thị trên giao diện**, nhưng kèm theo cờ `is_out_of_stock = True` để client tự động làm mờ (opacity 0.5), gắn nhãn cảnh báo **"HẾT MÓN"** và vô hiệu hóa nút thêm vào giỏ. Điều này giúp khách biết căn tin có phục vụ món này nhưng hiện đã hết suất, nâng cao trải nghiệm khách hàng.
 * **Bảo vệ Dữ liệu (Zero Data Leakage):**
-  * Chỉ tuần tự hóa các trường công khai của `product.template`: `id`, `name`, `list_price`, `canteen_category`.
+  * Chỉ tuần tự hóa các trường công khai: `id`, `name`, `list_price`, `canteen_category`, `is_out_of_stock`.
   * **CẤM TUYỆT ĐỐI** trả về: `standard_price` (giá vốn), `qty_available` (số lượng tồn kho kho tổng), `seller_ids` (nhà cung cấp nguyên liệu), các ghi chú nội bộ.
 
-#### 2. Endpoint Khách Gửi Đơn Gọi món
+#### 2. Endpoint Khách Gửi Đơn Gọi món (Chống Trùng Lặp & Kiểm Tra Nguyên Tử)
 * **Route:** `POST /canteen/api/order/create`
 * **Quyền truy cập:** `auth='public'`, `type='json'`, `methods=['POST']`
 * **Contract Payload gửi lên (Client Request):**
   ```json
   {
+    "idempotency_key": "c73a038b-8743-4140-8438-f13e77b18671",
     "qr_token": "aBcD_1234_TokenBàn_XyZ",
     "fulfillment_type": "dine_in",
     "customer_name": "Nguyễn Văn A",
@@ -500,31 +524,108 @@ sequenceDiagram
       {
         "product_id": 15,
         "qty": 2.0,
+        "expected_price_unit": 35000,
         "customer_note": "Ít cay, không lấy hành tây"
       },
       {
         "product_id": 28,
         "qty": 1.0,
+        "expected_price_unit": 15000,
         "customer_note": "Đá riêng"
       }
     ]
   }
   ```
-* **Quy tắc Kiểm tra Phía Server (Strict Server-Side Validation):**
-  1. **Khớp bàn qua Token:** Tìm `table_id` thông qua `qr_token`. Nếu token không hợp lệ $\rightarrow$ Trả về mã lỗi HTTP 400 Bad Request. Không cho phép client truyền trực tiếp tham số `table_id` (chống IDOR gọi món trộm sang bàn người khác).
-  2. **Bắt buộc gắn Phiên POS:** Hệ thống tự động gán `session_id` là phiên `opened` hiện hành.
-  3. **Đơn giá và Thành tiền:** Bỏ qua toàn bộ giá tiền phía client gửi lên nếu có. Hệ thống tự động truy vấn giá niêm yết `list_price` trong bảng `product_template` trên database và chụp vào `price_unit` của từng dòng `pos.order.line`.
-  4. **Kiểm tra Món mở bán:** Kiểm tra từng `product_id` có `canteen_available = True` và `active = True`. Nếu có món đã bị tắt bán, từ chối toàn bộ đơn và thông báo tên món đã hết.
-* **Contract Kết quả trả về (Server Response):**
+  *(Ghi chú: `expected_price_unit` là đơn giá tại thời điểm khách bấm chọn món trên client, dùng để server đối soát chống sai lệch giá; Server **TUYỆT ĐỐI** không lấy giá này để lưu vào hóa đơn mà luôn dùng `list_price` của server).*
+
+* **Quy trình Xử lý Kiểm tra 4 Bước Phía Server (Strict Server-Side Validation Pipeline):**
+  1. **Bước 1 — Xác thực Định danh & Khóa Idempotency:**
+     * Validate `idempotency_key` bắt buộc phải là chuỗi UUIDv4 hợp lệ.
+     * Tính mã băm `request_hash = SHA256(canonical_sorted_lines_json)`.
+     * Tra cứu `pos.order` theo `idempotency_key`:
+       * *Nếu đã tồn tại và trùng `request_hash`:* Đây là yêu cầu gửi lại do mạng lag $\rightarrow$ Trả về ngay **`HTTP 200 OK` (Idempotent Replay)** kèm dữ liệu đơn cũ, tuyệt đối không tạo đơn mới.
+       * *Nếu đã tồn tại nhưng khác `request_hash`:* Khách hàng tái sử dụng key cũ cho giỏ hàng khác $\rightarrow$ Từ chối và trả về **`HTTP 409 Conflict` (Lỗi `IDEMPOTENCY_PAYLOAD_MISMATCH`)**.
+  2. **Bước 2 — Khớp Bàn & Phiên POS:**
+     * Tìm `restaurant.table` theo `qr_token`. Nếu không tìm thấy $\rightarrow$ Trả về mã lỗi **`HTTP 400 Bad Request`**.
+     * Tự động gán `session_id` là phiên POS `opened` hiện hành.
+     * Tự động snapshot `floor_id = table.floor_id` vào `pos.order`.
+  3. **Bước 3 — Kiểm tra Nguyên tử Toàn vẹn (Atomic Validation - All-or-Nothing):**
+     * Truy vấn thông tin mới nhất của toàn bộ `product_id` từ CSDL trong Savepoint.
+     * Khởi tạo danh sách `invalid_items = []`.
+     * Với từng dòng món:
+       * Nếu món bị tắt bán (`canteen_published == False` hoặc `active == False`) hoặc bếp báo hết hàng (`canteen_is_out_of_stock == True`) $\rightarrow$ Thêm vào danh sách lỗi với mã `OUT_OF_STOCK`.
+       * Nếu giá niêm yết hiện thời `product.list_price != line.expected_price_unit` $\rightarrow$ Thêm vào danh sách lỗi với mã `PRICE_MISMATCH` kèm `expected_price` và `current_price`.
+     * **NẾU DANH SÁCH `invalid_items` CÓ ÍT NHẤT 1 PHẦN TỬ:**
+       * **TỪ CHỐI TOÀN BỘ ĐƠN HÀNG (Atomic Rollback)**, tuyệt đối không tạo đơn hàng một phần.
+       * Trả về mã lỗi **`HTTP 409 Conflict`** theo chuẩn RFC 7807 kèm danh sách chi tiết các món lỗi để client thông báo khách sửa lại giỏ hàng.
+  4. **Bước 4 — Khởi tạo Đơn hàng An toàn Đa luồng (Multi-Worker Concurrency Guard):**
+     * Chụp giá niêm yết `list_price` vào `price_unit` của từng dòng `pos.order.line`.
+     * Thực hiện lệnh `INSERT` trong khối `try...except` bắt ngoại lệ `psycopg2.errors.UniqueViolation` trên `idempotency_key` (phòng ngừa 2 Odoo worker cùng tiếp nhận request song song trong 1 mili-giây).
+     * Nếu xảy ra va chạm UniqueViolation: Rollback transaction của worker này, SELECT lại bản ghi do worker kia vừa tạo và trả về **`HTTP 200 OK`**, đảm bảo không bao giờ phát sinh lỗi 500 Unhandled Exception.
+
+* **Contract Kết quả Trả về Thành công (Server Success Response — HTTP 201 Created):**
   ```json
   {
     "status": "success",
     "order_name": "Order 00001-002-0004",
     "access_token": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+    "idempotency_key": "c73a038b-8743-4140-8438-f13e77b18671",
     "amount_total": 75000,
     "currency": "VND",
     "service_state": "received",
     "message": "Đơn đặt món của bạn đã được gửi tới nhà bếp thành công!"
+  }
+  ```
+
+* **Contract Kết quả Trả về Khi Gửi lại Đơn cũ (Idempotent Replay Response — HTTP 200 OK):**
+  ```json
+  {
+    "status": "replayed",
+    "order_name": "Order 00001-002-0004",
+    "access_token": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+    "idempotency_key": "c73a038b-8743-4140-8438-f13e77b18671",
+    "amount_total": 75000,
+    "currency": "VND",
+    "service_state": "received",
+    "message": "Đơn hàng này đã được tiếp nhận trước đó."
+  }
+  ```
+
+* **Contract Kết quả Trả về Khi Lỗi Kiểm tra Nguyên tử (Atomic Validation Failure — HTTP 409 Conflict theo RFC 7807):**
+  ```json
+  {
+    "type": "https://canteen.uth.edu.vn/errors/atomic-validation-failed",
+    "title": "Atomic Order Validation Failed",
+    "status": 409,
+    "error_code": "ATOMIC_VALIDATION_ERROR",
+    "message": "Đơn hàng không thể khởi tạo do có món đã hết hoặc thay đổi giá niêm yết. Toàn bộ đơn đã được hủy an toàn.",
+    "invalid_items": [
+      {
+        "product_id": 15,
+        "product_name": "Cơm sườn nướng",
+        "error_type": "OUT_OF_STOCK",
+        "message": "Món ăn vừa hết hàng trong bếp."
+      },
+      {
+        "product_id": 28,
+        "product_name": "Trà đào cam sả",
+        "error_type": "PRICE_MISMATCH",
+        "expected_price": 15000,
+        "current_price": 18000,
+        "message": "Giá niêm yết đã được cập nhật thành 18.000 VND."
+      }
+    ]
+  }
+  ```
+
+* **Contract Kết quả Trả về Khi Tráo đổi Giỏ hàng Trùng Key (Idempotency Payload Mismatch — HTTP 409 Conflict):**
+  ```json
+  {
+    "type": "https://canteen.uth.edu.vn/errors/idempotency-payload-mismatch",
+    "title": "Idempotency Key Conflict",
+    "status": 409,
+    "error_code": "IDEMPOTENCY_PAYLOAD_MISMATCH",
+    "message": "Mã idempotency_key này đã được sử dụng cho một đơn hàng khác với nội dung giỏ hàng không trùng khớp. Vui lòng tạo yêu cầu mới với mã idempotency_key khác."
   }
   ```
 
