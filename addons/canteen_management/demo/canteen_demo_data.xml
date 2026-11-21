@@ -1,4 +1,469 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Demo data scaffold for UTH Canteen testing & CI/CD -->
+    <data noupdate="1">
+        <!-- ================================================================= -->
+        <!-- 1. RES.PARTNER: KHÁCH HÀNG SINH VIÊN / GIẢNG VIÊN DEMO            -->
+        <!-- ================================================================= -->
+        <record id="partner_student_an" model="res.partner">
+            <field name="name">Nguyễn Văn An (SV K21 - CNTT)</field>
+            <field name="email">an.nguyen.k21@uth.edu.vn</field>
+            <field name="phone">0901234567</field>
+            <field name="is_company" eval="False"/>
+            <field name="customer_rank" eval="1"/>
+            <field name="comment">Sinh viên năm cuối Khoa CNTT - Khách quen căn tin cơ sở 1</field>
+        </record>
+
+        <record id="partner_student_mai" model="res.partner">
+            <field name="name">Trần Thị Mai (SV K22 - Kinh tế Vận tải)</field>
+            <field name="email">mai.tran.k22@uth.edu.vn</field>
+            <field name="phone">0912345678</field>
+            <field name="is_company" eval="False"/>
+            <field name="customer_rank" eval="1"/>
+            <field name="comment">Sinh viên K22 - Đặt trước suất ăn theo ca thường xuyên</field>
+        </record>
+
+        <record id="partner_lecturer_nam" model="res.partner">
+            <field name="name">TS. Lê Hoàng Nam (Giảng viên Viện Hàng hải)</field>
+            <field name="email">nam.lehoang@uth.edu.vn</field>
+            <field name="phone">0987654321</field>
+            <field name="is_company" eval="False"/>
+            <field name="customer_rank" eval="1"/>
+            <field name="comment">Cán bộ giảng viên UTH</field>
+        </record>
+
+        <!-- ================================================================= -->
+        <!-- 2. RES.USERS: TÁC NHÂN VẬN HÀNH BẾP (KDS) & THU NGÂN (POS) DEMO  -->
+        <!-- ================================================================= -->
+        <record id="user_canteen_kitchen" model="res.users">
+            <field name="name">Trần Văn Bếp (Nhân viên Bếp KDS)</field>
+            <field name="login">kitchen@uth.edu.vn</field>
+            <field name="email">kitchen@uth.edu.vn</field>
+            <field name="password">uth@2026</field>
+            <field name="groups_id" eval="[(4, ref('group_canteen_kitchen')), (4, ref('point_of_sale.group_pos_user'))]"/>
+        </record>
+
+        <record id="user_canteen_cashier" model="res.users">
+            <field name="name">Lê Thị Thu Ngân (Thu ngân POS)</field>
+            <field name="login">cashier@uth.edu.vn</field>
+            <field name="email">cashier@uth.edu.vn</field>
+            <field name="password">uth@2026</field>
+            <field name="groups_id" eval="[(4, ref('group_canteen_cashier')), (4, ref('point_of_sale.group_pos_user'))]"/>
+        </record>
+
+        <!-- ================================================================= -->
+        <!-- 3. PRODUCT.PRODUCT: THỰC ĐƠN MÓN ĂN & ĐỒ UỐNG CĂN TIN (5 NHÓM)   -->
+        <!-- Kế thừa product.product (_inherits product.template) để chuẩn     -->
+        <!-- hóa quan hệ Many2one với pos.order.line và canteen.meal.slot      -->
+        <!-- ================================================================= -->
+
+        <!-- 3.1. Nhóm Món Cơm (canteen_category = 'rice') -->
+        <record id="product_rice_chicken" model="product.product">
+            <field name="name">Cơm gà xối mỡ giòn rụm UTH</field>
+            <field name="default_code">UTH-RICE-01</field>
+            <field name="list_price">35000.0</field>
+            <field name="type">consu</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="available_in_pos" eval="True"/>
+            <field name="canteen_available" eval="True"/>
+            <field name="canteen_category">rice</field>
+            <field name="description_sale">Đùi gà góc tư chiên giòn, cơm chiên tỏi, canh rau và dưa chua.</field>
+        </record>
+
+        <record id="product_rice_broken" model="product.product">
+            <field name="name">Cơm tấm sườn bì chả đặc biệt</field>
+            <field name="default_code">UTH-RICE-02</field>
+            <field name="list_price">40000.0</field>
+            <field name="type">consu</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="available_in_pos" eval="True"/>
+            <field name="canteen_available" eval="True"/>
+            <field name="canteen_category">rice</field>
+            <field name="description_sale">Sườn nướng mật ong, bì thái mỏng, chả trứng hấp, đồ chua và mỡ hành.</field>
+        </record>
+
+        <record id="product_rice_beef" model="product.product">
+            <field name="name">Cơm bò xào đậu que</field>
+            <field name="default_code">UTH-RICE-03</field>
+            <field name="list_price">35000.0</field>
+            <field name="type">consu</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="available_in_pos" eval="True"/>
+            <field name="canteen_available" eval="True"/>
+            <field name="canteen_category">rice</field>
+            <field name="description_sale">Thịt bò xào đậu que giòn ngọt kèm canh rong biển.</field>
+        </record>
+
+        <!-- 3.2. Nhóm Món Bún / Phở (canteen_category = 'noodle') -->
+        <record id="product_noodle_beef" model="product.product">
+            <field name="name">Bún bò Huế giò nạc UTH</field>
+            <field name="default_code">UTH-NOODLE-01</field>
+            <field name="list_price">35000.0</field>
+            <field name="type">consu</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="available_in_pos" eval="True"/>
+            <field name="canteen_available" eval="True"/>
+            <field name="canteen_category">noodle</field>
+            <field name="description_sale">Bún bò nước dùng đậm đà, thịt bò nạc, chả cua và rau ghém tươi.</field>
+        </record>
+
+        <record id="product_noodle_pho" model="product.product">
+            <field name="name">Phở bò tái nạm gia truyền</field>
+            <field name="default_code">UTH-NOODLE-02</field>
+            <field name="list_price">35000.0</field>
+            <field name="type">consu</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="available_in_pos" eval="True"/>
+            <field name="canteen_available" eval="True"/>
+            <field name="canteen_category">noodle</field>
+            <field name="description_sale">Bánh phở mềm, bò tái nạm tươi ngon, nước hầm xương nguyên chất.</field>
+        </record>
+
+        <record id="product_noodle_quang" model="product.product">
+            <field name="name">Mì Quảng tôm thịt trứng cút</field>
+            <field name="default_code">UTH-NOODLE-03</field>
+            <field name="list_price">35000.0</field>
+            <field name="type">consu</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="available_in_pos" eval="True"/>
+            <field name="canteen_available" eval="True"/>
+            <field name="canteen_category">noodle</field>
+            <field name="description_sale">Mì Quảng chuẩn vị miền Trung, tôm tươi, thịt ba rọi và bánh tráng mè nướng.</field>
+        </record>
+
+        <!-- 3.3. Nhóm Đồ Uống (canteen_category = 'drink') -->
+        <record id="product_drink_coffee_milk" model="product.product">
+            <field name="name">Cà phê sữa đá pha phin</field>
+            <field name="default_code">UTH-DRINK-01</field>
+            <field name="list_price">18000.0</field>
+            <field name="type">consu</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="available_in_pos" eval="True"/>
+            <field name="canteen_available" eval="True"/>
+            <field name="canteen_category">drink</field>
+            <field name="description_sale">Cà phê Robusta Đắk Lắk đậm đà hòa quyện cùng sữa đặc Ông Thọ.</field>
+        </record>
+
+        <record id="product_drink_peach_tea" model="product.product">
+            <field name="name">Trà đào cam sả thanh nhiệt</field>
+            <field name="default_code">UTH-DRINK-02</field>
+            <field name="list_price">22000.0</field>
+            <field name="type">consu</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="available_in_pos" eval="True"/>
+            <field name="canteen_available" eval="True"/>
+            <field name="canteen_category">drink</field>
+            <field name="description_sale">Trà thảo mộc thơm mát kết hợp lát đào giòn ngọt và tinh dầu sả tươi.</field>
+        </record>
+
+        <record id="product_drink_lemon_tea" model="product.product">
+            <field name="name">Trà chanh giã tay hoa lài</field>
+            <field name="default_code">UTH-DRINK-03</field>
+            <field name="list_price">15000.0</field>
+            <field name="type">consu</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="available_in_pos" eval="True"/>
+            <field name="canteen_available" eval="True"/>
+            <field name="canteen_category">drink</field>
+            <field name="description_sale">Trà lài thơm nức kết hợp chanh vàng tươi giã tay giải nhiệt mùa thi.</field>
+        </record>
+
+        <record id="product_drink_water" model="product.product">
+            <field name="name">Nước khoáng thiên nhiên Aquafina 500ml</field>
+            <field name="default_code">UTH-DRINK-04</field>
+            <field name="list_price">8000.0</field>
+            <field name="type">consu</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="available_in_pos" eval="True"/>
+            <field name="canteen_available" eval="True"/>
+            <field name="canteen_category">drink</field>
+            <field name="description_sale">Nước uống đóng chai tinh khiết.</field>
+        </record>
+
+        <!-- 3.4. Nhóm Món Ăn Vặt / Tráng Miệng (canteen_category = 'snack') -->
+        <record id="product_snack_bread" model="product.product">
+            <field name="name">Bánh mì xíu mại trứng muối</field>
+            <field name="default_code">UTH-SNACK-01</field>
+            <field name="list_price">20000.0</field>
+            <field name="type">consu</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="available_in_pos" eval="True"/>
+            <field name="canteen_available" eval="True"/>
+            <field name="canteen_category">snack</field>
+            <field name="description_sale">Bánh mì nóng giòn ăn kèm viên xíu mại sốt cà chua đậm đà.</field>
+        </record>
+
+        <record id="product_snack_flan" model="product.product">
+            <field name="name">Bánh Flan cà phê nước cốt dừa</field>
+            <field name="default_code">UTH-SNACK-02</field>
+            <field name="list_price">12000.0</field>
+            <field name="type">consu</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="available_in_pos" eval="True"/>
+            <field name="canteen_available" eval="True"/>
+            <field name="canteen_category">snack</field>
+            <field name="description_sale">Bánh flan mềm mịn, béo ngậy thơm hương cà phê và cốt dừa Bến Tre.</field>
+        </record>
+
+        <!-- 3.5. Nhóm Đồ Ăn Nhanh (canteen_category = 'fastfood') -->
+        <record id="product_fastfood_burger" model="product.product">
+            <field name="name">Burger gà giòn sốt cay Mayonnaise UTH</field>
+            <field name="default_code">UTH-FAST-01</field>
+            <field name="list_price">30000.0</field>
+            <field name="type">consu</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="available_in_pos" eval="True"/>
+            <field name="canteen_available" eval="True"/>
+            <field name="canteen_category">fastfood</field>
+            <field name="description_sale">Bánh mì burger mè, đùi gà phi-lê giòn rụm, xà lách tươi và sốt cay.</field>
+        </record>
+
+        <!-- ================================================================= -->
+        <!-- 4. RESTAURANT.FLOOR: KHU VỰC / TẦNG PHỤC VỤ CĂN TIN               -->
+        <!-- ================================================================= -->
+        <record id="floor_sanh_chinh" model="restaurant.floor">
+            <field name="name">Sảnh A - Tầng Trệt Căn tin</field>
+            <field name="sequence">1</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="floor_tang_lung" model="restaurant.floor">
+            <field name="name">Sảnh B - Tầng Lửng Máy Lạnh</field>
+            <field name="sequence">2</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="floor_san_vuon" model="restaurant.floor">
+            <field name="name">Khu C - Khuôn Viên Sân Vườn</field>
+            <field name="sequence">3</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- ================================================================= -->
+        <!-- 5. RESTAURANT.TABLE: BÀN ĂN & TOKEN ĐỊNH DANH MÃ QR               -->
+        <!-- Tọa độ và kích thước được bố trí khoa học, không chồng lấn        -->
+        <!-- ================================================================= -->
+
+        <!-- 5.1. Bàn thuộc Sảnh A (Tầng trệt) -->
+        <record id="table_a01" model="restaurant.table">
+            <field name="name">Bàn A-01</field>
+            <field name="floor_id" ref="floor_sanh_chinh"/>
+            <field name="seats">4</field>
+            <field name="shape">square</field>
+            <field name="position_h">80.0</field>
+            <field name="position_v">80.0</field>
+            <field name="width">100.0</field>
+            <field name="height">100.0</field>
+            <field name="qr_token">uth-qr-table-a01-f89a2b71</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="table_a02" model="restaurant.table">
+            <field name="name">Bàn A-02</field>
+            <field name="floor_id" ref="floor_sanh_chinh"/>
+            <field name="seats">4</field>
+            <field name="shape">square</field>
+            <field name="position_h">220.0</field>
+            <field name="position_v">80.0</field>
+            <field name="width">100.0</field>
+            <field name="height">100.0</field>
+            <field name="qr_token">uth-qr-table-a02-c43e71d9</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="table_a03" model="restaurant.table">
+            <field name="name">Bàn A-03</field>
+            <field name="floor_id" ref="floor_sanh_chinh"/>
+            <field name="seats">6</field>
+            <field name="shape">round</field>
+            <field name="position_h">80.0</field>
+            <field name="position_v">220.0</field>
+            <field name="width">110.0</field>
+            <field name="height">110.0</field>
+            <field name="qr_token">uth-qr-table-a03-91b5c824</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="table_a04" model="restaurant.table">
+            <field name="name">Bàn A-04 (Bàn Nhóm Lớn)</field>
+            <field name="floor_id" ref="floor_sanh_chinh"/>
+            <field name="seats">8</field>
+            <field name="shape">round</field>
+            <field name="position_h">220.0</field>
+            <field name="position_v">220.0</field>
+            <field name="width">130.0</field>
+            <field name="height">130.0</field>
+            <field name="qr_token">uth-qr-table-a04-5e26d03a</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- 5.2. Bàn thuộc Sảnh B (Tầng lửng) -->
+        <record id="table_b01" model="restaurant.table">
+            <field name="name">Bàn B-01 (Tầng lửng)</field>
+            <field name="floor_id" ref="floor_tang_lung"/>
+            <field name="seats">4</field>
+            <field name="shape">square</field>
+            <field name="position_h">100.0</field>
+            <field name="position_v">100.0</field>
+            <field name="width">100.0</field>
+            <field name="height">100.0</field>
+            <field name="qr_token">uth-qr-table-b01-a187f342</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="table_b02" model="restaurant.table">
+            <field name="name">Bàn B-02 (Tầng lửng)</field>
+            <field name="floor_id" ref="floor_tang_lung"/>
+            <field name="seats">4</field>
+            <field name="shape">square</field>
+            <field name="position_h">250.0</field>
+            <field name="position_v">100.0</field>
+            <field name="width">100.0</field>
+            <field name="height">100.0</field>
+            <field name="qr_token">uth-qr-table-b02-76dc085e</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- 5.3. Bàn thuộc Khu C (Khuôn viên ngoài trời) -->
+        <record id="table_c01" model="restaurant.table">
+            <field name="name">Bàn C-01 (Ngoài trời)</field>
+            <field name="floor_id" ref="floor_san_vuon"/>
+            <field name="seats">6</field>
+            <field name="shape">round</field>
+            <field name="position_h">100.0</field>
+            <field name="position_v">100.0</field>
+            <field name="width">110.0</field>
+            <field name="height">110.0</field>
+            <field name="qr_token">uth-qr-table-c01-38cb4190</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="table_c02" model="restaurant.table">
+            <field name="name">Bàn C-02 (Ngoài trời)</field>
+            <field name="floor_id" ref="floor_san_vuon"/>
+            <field name="seats">6</field>
+            <field name="shape">round</field>
+            <field name="position_h">250.0</field>
+            <field name="position_v">100.0</field>
+            <field name="width">110.0</field>
+            <field name="height">110.0</field>
+            <field name="qr_token">uth-qr-table-c02-d92e541b</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- ================================================================= -->
+        <!-- 6. CANTEEN.MEAL.SLOT: KHUNG GIỜ VÀ SỨC CHỨA CA ĂN                 -->
+        <!-- Bắt buộc chỉ định product_id chuẩn product.product theo Contract  -->
+        <!-- ================================================================= -->
+        <record id="slot_lunch_shift_1" model="canteen.meal.slot">
+            <field name="name">Ca Trưa 1 (11h00 - 12h00) - Ngày 21/11</field>
+            <field name="product_id" ref="product_rice_chicken"/>
+            <field name="start_at">2026-11-21 04:00:00</field>
+            <field name="end_at">2026-11-21 05:00:00</field>
+            <field name="capacity">100</field>
+            <field name="booked_count">2</field>
+            <field name="state">open</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="slot_lunch_shift_2" model="canteen.meal.slot">
+            <field name="name">Ca Trưa 2 (12h00 - 13h00) - Ngày 21/11</field>
+            <field name="product_id" ref="product_noodle_beef"/>
+            <field name="start_at">2026-11-21 05:00:00</field>
+            <field name="end_at">2026-11-21 06:00:00</field>
+            <field name="capacity">100</field>
+            <field name="booked_count">3</field>
+            <field name="state">open</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="slot_dinner_shift" model="canteen.meal.slot">
+            <field name="name">Ca Chiều (17h00 - 18h30) - Ngày 21/11</field>
+            <field name="product_id" ref="product_rice_broken"/>
+            <field name="start_at">2026-11-21 10:00:00</field>
+            <field name="end_at">2026-11-21 11:30:00</field>
+            <field name="capacity">60</field>
+            <field name="booked_count">0</field>
+            <field name="state">open</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- ================================================================= -->
+        <!-- 7. CANTEEN.MEAL.BOOKING: PHIẾU ĐẶT TRƯỚC SUẤT ĂN MẪU              -->
+        <!-- Bao quát trọn vẹn vòng đời trạng thái (confirmed, served, cancelled)-->
+        <!-- Tuân thủ chặt chẽ access_token UUIDv4 và partial unique index     -->
+        <!-- ================================================================= -->
+
+        <!-- Booking 1: Sinh viên An - Ca Trưa 1 (1 suất, confirmed) - Test UC06 -->
+        <record id="booking_sample_01" model="canteen.meal.booking">
+            <field name="booking_ref">BKG-20261121-0001</field>
+            <field name="access_token">e7b1a2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c</field>
+            <field name="partner_id" ref="partner_student_an"/>
+            <field name="slot_id" ref="slot_lunch_shift_1"/>
+            <field name="quantity">1</field>
+            <field name="state">confirmed</field>
+            <field name="booked_at">2026-11-21 02:15:00</field>
+            <field name="note">Cơm gà xối mỡ, xin thêm nhiều dưa chua và nước sốt.</field>
+        </record>
+
+        <!-- Booking 2: Sinh viên Mai - Ca Trưa 1 (1 suất, confirmed) - Test UC06 -->
+        <record id="booking_sample_02" model="canteen.meal.booking">
+            <field name="booking_ref">BKG-20261121-0002</field>
+            <field name="access_token">f8c2b3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d</field>
+            <field name="partner_id" ref="partner_student_mai"/>
+            <field name="slot_id" ref="slot_lunch_shift_1"/>
+            <field name="quantity">1</field>
+            <field name="state">confirmed</field>
+            <field name="booked_at">2026-11-21 02:45:00</field>
+            <field name="note">Cơm tấm sườn nướng không hành lá.</field>
+        </record>
+
+        <!-- Booking 3: Giảng viên Nam - Ca Trưa 2 (2 suất, confirmed) - Test UC06 -->
+        <record id="booking_sample_03" model="canteen.meal.booking">
+            <field name="booking_ref">BKG-20261121-0003</field>
+            <field name="access_token">a9d3c4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e</field>
+            <field name="partner_id" ref="partner_lecturer_nam"/>
+            <field name="slot_id" ref="slot_lunch_shift_2"/>
+            <field name="quantity">2</field>
+            <field name="state">confirmed</field>
+            <field name="booked_at">2026-11-21 03:00:00</field>
+            <field name="note">2 suất bún bò Huế giò nạc ăn tại chỗ.</field>
+        </record>
+
+        <!-- Booking 4: Sinh viên An - Ca Trưa 2 (1 suất, served) - Test UC07 Check-in -->
+        <record id="booking_sample_04" model="canteen.meal.booking">
+            <field name="booking_ref">BKG-20261121-0004</field>
+            <field name="access_token">b0e4d5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f</field>
+            <field name="partner_id" ref="partner_student_an"/>
+            <field name="slot_id" ref="slot_lunch_shift_2"/>
+            <field name="quantity">1</field>
+            <field name="state">served</field>
+            <field name="booked_at">2026-11-21 03:15:00</field>
+            <field name="note">Đã quét mã nhận phần ăn ca 2 lúc 12h05 thành công.</field>
+        </record>
+
+        <!-- Booking 5: Sinh viên Mai - Ca Chiều (1 suất, cancelled) - Test UC08 Hủy/No-show -->
+        <record id="booking_sample_05" model="canteen.meal.booking">
+            <field name="booking_ref">BKG-20261121-0005</field>
+            <field name="access_token">c1f5e6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a</field>
+            <field name="partner_id" ref="partner_student_mai"/>
+            <field name="slot_id" ref="slot_dinner_shift"/>
+            <field name="quantity">1</field>
+            <field name="state">cancelled</field>
+            <field name="booked_at">2026-11-21 03:30:00</field>
+            <field name="note">Hủy trước 2 tiếng do có lịch thi đột xuất.</field>
+        </record>
+    </data>
 </odoo>
