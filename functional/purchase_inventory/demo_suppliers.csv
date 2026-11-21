@@ -1,0 +1,6 @@
+id,name,is_company,supplier_rank,customer_rank,email,phone,street,city
+partner_supplier_an_sang,Công ty Cổ phần Thực phẩm An Sáng UTH,True,1,0,contact@ansangfood.vn,02838997788,Số 2 Võ Oanh Phường 25 Bình Thạnh,Thành phố Hồ Chí Minh
+partner_supplier_da_lat,Hợp tác xã Nông sản Rau Sạch Đà Lạt Green,True,1,0,dalatgreen@dalatcoop.vn,02633889900,123 Phù Đổng Thiên Vương Phường 8,Đà Lạt
+partner_supplier_tan_thuan,Công ty TNHH Cung ứng Thịt Tươi Tân Thuận,True,1,0,tanthuanmeat@freshmeat.com.vn,02837776655,Lô C12 KCN Tân Thuận Quận 7,Thành phố Hồ Chí Minh
+partner_supplier_vinh_hao,Đại lý Nước khoáng Tinh khiết Vĩnh Hảo Sài Gòn,True,1,0,sales@vinhhaosaigon.vn,02838223344,45 Đinh Tiên Hoàng Quận 1,Thành phố Hồ Chí Minh
+partner_supplier_gia_vi_viet,Công ty Gia vị & Phụ gia Thực phẩm Hương Việt,True,1,0,huongviet@giaviviet.vn,02839112233,78 Nguyễn Đình Chiểu Quận 3,Thành phố Hồ Chí Minh

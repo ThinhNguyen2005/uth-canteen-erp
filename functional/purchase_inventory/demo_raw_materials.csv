@@ -1,0 +1,11 @@
+id,name,detailed_type,purchase_ok,sale_ok,list_price,standard_price,uom_id/id,uom_po_id/id,categ_id/id
+raw_rice_st25,Gạo thơm ST25 Thượng hạng (Bao 25kg),consu,True,False,0.0,24000.0,uom.product_uom_kgm,uom.product_uom_kgm,product.product_category_all
+raw_chicken_thigh,Đùi gà tươi góc tư công nghiệp CP,consu,True,False,0.0,46000.0,uom.product_uom_kgm,uom.product_uom_kgm,product.product_category_all
+raw_pork_rib,Sườn non heo tươi Vissan,consu,True,False,0.0,115000.0,uom.product_uom_kgm,uom.product_uom_kgm,product.product_category_all
+raw_beef_tenderloin,Thịt bắp bò hoa tươi chuẩn Việt,consu,True,False,0.0,185000.0,uom.product_uom_kgm,uom.product_uom_kgm,product.product_category_all
+raw_pho_noodle,Bánh phở tươi truyền thống trong ngày,consu,True,False,0.0,18000.0,uom.product_uom_kgm,uom.product_uom_kgm,product.product_category_all
+raw_cooking_oil,Dầu ăn thực vật Cái Lân (Can 25L),consu,True,False,0.0,750000.0,uom.product_uom_unit,uom.product_uom_unit,product.product_category_all
+raw_green_tea,Trà lài Tân Cương ướp hoa tươi,consu,True,False,0.0,90000.0,uom.product_uom_kgm,uom.product_uom_kgm,product.product_category_all
+raw_condensed_milk,Sữa đặc có đường Ông Thọ xanh lá (Thùng 48 lon),consu,True,False,0.0,1120000.0,uom.product_uom_unit,uom.product_uom_unit,product.product_category_all
+raw_vegetable_mix,Rau củ hỗn hợp nhặt sẵn Đà Lạt (Cà rốt bắp cải dưa leo),consu,True,False,0.0,22000.0,uom.product_uom_kgm,uom.product_uom_kgm,product.product_category_all
+raw_egg_chicken,Trứng gà tươi công nghiệp Ba Huân (Vỉ 30 quả),consu,True,False,0.0,75000.0,uom.product_uom_unit,uom.product_uom_unit,product.product_category_all
