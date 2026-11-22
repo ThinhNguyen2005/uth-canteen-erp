@@ -155,18 +155,13 @@ erDiagram
 ## 3. Từ điển Dữ liệu Chi tiết (Data Dictionary & ORM Specification)
 
 ### 3.1. Phân hệ Bàn ăn & Sảnh (`restaurant.table` & `restaurant.floor`)
-Kế thừa module `pos_restaurant`. Quản lý bàn ăn và mã định danh QR.
+Kế thừa module `pos_restaurant`. Quản lý bàn ăn và mã định danh QR tại chỗ.
 
 > [!IMPORTANT]
-> **Quy chuẩn Định danh Mã QR (Table-Only QR Spec):**
-> 1. **Chỉ dùng QR theo từng bàn:** Mã QR được dán cố định trên từng mặt bàn ăn (`restaurant.table.qr_token`). Tuyệt đối **không dùng mã QR chung theo khu vực/sảnh** để tránh nhập nhằng vị trí thực khách ngồi.
-> 2. **Khu vực / Sảnh tự động suy dẫn:** Mọi thông tin về sảnh phục vụ được tự động truy xuất thông qua mối quan hệ Many2one `restaurant.table.floor_id`.
-> 3. **Mô hình Bàn ảo Quầy Mang đi (Virtual Takeaway Table Pattern):** Để phục vụ khách hàng mua mang về (Takeaway) mà không ngồi vào bàn vật lý, hệ thống khởi tạo sẵn một bản ghi Bàn ảo hệ thống trong bảng `restaurant.table`:
->    - `name = "Quầy Mang Đi (Takeaway)"`
->    - `floor_id = [ID Sảnh chính]`
->    - `qr_token = "uth-qr-takeaway-counter-vtable"` (Mã QR cố định in dán tại quầy chờ)
->    - `seats = 999`, `active = True`
->    Khi khách quét mã QR tại quầy này, client tự động khóa hình thức phục vụ `fulfillment_type = 'takeaway'`.
+> **Quy chuẩn Định danh Mã QR Ăn Tại Bàn (Table-Only QR Spec):**
+> 1. **Chỉ dùng QR theo từng bàn thực tế:** Mã QR được dán cố định trên từng mặt bàn ăn (`restaurant.table.qr_token`). Bảng `restaurant.table` chỉ đại diện cho bàn ăn vật lý thực tế có mặt trên sơ đồ sảnh căn tin.
+> 2. **Tuyệt đối không dùng "Bàn ảo":** Không tạo bất kỳ bản ghi bàn ảo (như bàn 999 ghế) trong bảng `restaurant.table` để tránh làm sai lệch sơ đồ sảnh (Floor Plan Map) và méo mó báo cáo công suất bàn của POS.
+> 3. **Khu vực / Sảnh tự động suy dẫn:** Đối với đơn ăn tại bàn (`dine_in`), thông tin sảnh phục vụ được tự động truy xuất qua `restaurant.table.floor_id`.
 
 | Tên trường (Field) | Tên kỹ thuật Odoo | Kiểu dữ liệu ORM | Bắt buộc | Default / Attributes | Quy tắc nghiệp vụ & Ràng buộc Kỹ thuật |
 | :--- | :--- | :--- | :---: | :--- | :--- |
@@ -182,6 +177,24 @@ Kế thừa module `pos_restaurant`. Quản lý bàn ăn và mã định danh QR
       ('unique_qr_token', 'UNIQUE(qr_token)', 'Mã QR Token của bàn phải là duy nhất trên toàn hệ thống!'),
       ('check_seats_positive', 'CHECK(seats > 0)', 'Số chỗ ngồi của bàn phải lớn hơn 0!'),
   ]
+  ```
+
+---
+
+### 3.1.b. Phân hệ Cấu hình Điểm bán & Quầy Mang đi (`pos.config`)
+Kế thừa model `pos.config` của Odoo. Quản lý mã QR chuyên dụng đặt tại quầy Mang đi (Takeaway).
+
+| Tên trường (Field) | Tên kỹ thuật Odoo | Kiểu dữ liệu ORM | Bắt buộc | Default / Attributes | Quy tắc nghiệp vụ & Ràng buộc Kỹ thuật |
+| :--- | :--- | :--- | :---: | :--- | :--- |
+| Mã QR Quầy Mang Đi | `takeaway_qr_token` | `fields.Char` | Có | size=64, index=True, copy=False, readonly=True | Token độc nhất dán tại quầy Mang đi (In ra standee quầy chờ). |
+| Bật QR Mang đi | `takeaway_qr_active` | `fields.Boolean` | Có | default=True | `False` khi quầy tạm ngừng phục vụ đơn mang về. |
+
+* **Phương thức Tái tạo Mã QR Quầy (`pos.config`):**
+  ```python
+  def action_regenerate_takeaway_qr(self):
+      """Chỉ Canteen Manager mới có quyền thu hồi và sinh mã QR mới khi phát hiện bị lộ"""
+      self.ensure_one()
+      self.takeaway_qr_token = secrets.token_urlsafe(24)
   ```
 
 ---
@@ -212,8 +225,9 @@ Kế thừa model `pos.order` chuẩn Odoo. Kết nối trực tiếp với nhà
 | Khóa chống đặt trùng | `idempotency_key` | `fields.Char` | Có | size=64, index=True, copy=False, readonly=True | UUIDv4 do Client sinh ra. Bắt buộc `copy=False` để không lỗi Unique khi nhân bản đơn trên Odoo. Chống tạo 2 đơn khi khách bấm đúp hoặc mạng lag retry. |
 | Băm giỏ hàng đối soát | `request_hash` | `fields.Char` | Có | size=64, copy=False, readonly=True | SHA-256 hash của JSON dòng món. Dùng để phát hiện hành vi tái sử dụng key nhưng tráo đổi giỏ hàng (Payload Tampering). |
 | Phiên POS phụ trách | `session_id` | `fields.Many2one` | Có | comodel='pos.session', ondelete='restrict', index=True | Liên kết phiên làm việc đang mở. Ràng buộc: bắt buộc phải là phiên có `state = 'opened'`. |
-| Bàn phục vụ | `table_id` | `fields.Many2one` | ĐK | comodel='restaurant.table', ondelete='set null', index=True | Bắt buộc nếu `fulfillment_type = 'dine_in'`. Với đơn mang đi, trỏ tới Bàn ảo quầy Takeaway. |
-| Khu vực / Sảnh | `floor_id` | `fields.Many2one` | Có | comodel='restaurant.floor', related='table_id.floor_id', store=True, readonly=True, index=True | Snapshot khu vực phục vụ tại thời điểm tạo đơn, chống mất dấu vết lịch sử khi bàn bị sửa/xóa. |
+| Bàn phục vụ | `table_id` | `fields.Many2one` | ĐK | comodel='restaurant.table', ondelete='set null', index=True | **Bắt buộc nếu `fulfillment_type = 'dine_in'`. Bắt buộc để trống (null) nếu là đơn mang đi (`takeaway`).** Tuyệt đối không dùng bàn ảo. |
+| Khu vực / Sảnh | `floor_id` | `fields.Many2one` | Không | comodel='restaurant.floor', related='table_id.floor_id', store=True, readonly=True, index=True | Snapshot khu vực phục vụ tại thời điểm tạo đơn. Tự động mang giá trị `False` (null) khi đơn mang đi. |
+| Vị trí phục vụ | `service_location_display` | `fields.Char` | Có | compute='_compute_service_location_display', store=True, index=True | Hiển thị trực quan: `"Bàn A-01 (Sảnh A)"` cho đơn tại bàn, hoặc `"MANG ĐI (TAKEAWAY)"` cho đơn mang về để KDS và POS dễ phân biệt. |
 | Khách hàng | `partner_id` | `fields.Many2one` | Không | comodel='res.partner', ondelete='set null', index=True | Người đặt món (nếu có tài khoản hoặc cung cấp SĐT/Tên). |
 | Hình thức phục vụ | `fulfillment_type` | `fields.Selection` | Có | default='dine_in', index=True | `[('dine_in', 'Ăn tại bàn'), ('takeaway', 'Mang đi')]`. |
 | Trạng thái bếp | `service_state` | `fields.Selection` | Có | default='received', index=True, tracking=True | `[('received', 'Mới nhận'), ('preparing', 'Đang nấu'), ('ready', 'Sẵn sàng phục vụ'), ('completed', 'Đã giao khách'), ('cancelled', 'Đã hủy món')]`. |
@@ -222,12 +236,26 @@ Kế thừa model `pos.order` chuẩn Odoo. Kết nối trực tiếp với nhà
 | Thời gian tạo đơn | `date_order` | `fields.Datetime` | Có | default=fields.Datetime.now, readonly=True, index=True | Lưu UTC chuẩn trong PostgreSQL; format `Asia/Ho_Chi_Minh` khi render. |
 | Tổng tiền đơn hàng | `amount_total` | `fields.Monetary` | Có | currency_field='currency_id', readonly=True | Tự động tính toán = tổng `price_subtotal_incl` của các dòng món. |
 
-* **SQL Constraints (`pos.order`):**
+* **SQL Constraints & Python Constraints (`pos.order`):**
   ```python
   _sql_constraints = [
       ('unique_access_token', 'UNIQUE(access_token)', 'Access token của đơn hàng phải là duy nhất!'),
       ('unique_idempotency_key', 'UNIQUE(idempotency_key)', 'Idempotency Key của đơn hàng phải là duy nhất trên toàn hệ thống!'),
+      ('check_fulfillment_table_integrity', 
+       """CHECK (
+           (fulfillment_type = 'dine_in' AND table_id IS NOT NULL) OR
+           (fulfillment_type = 'takeaway' AND table_id IS NULL AND floor_id IS NULL)
+       )""", 
+       'Dữ liệu hình thức phục vụ và bàn ăn không đồng nhất! Đơn mang đi không được gán bàn.'),
   ]
+
+  @api.constrains('fulfillment_type', 'table_id', 'floor_id')
+  def _check_fulfillment_consistency(self):
+      for order in self:
+          if order.fulfillment_type == 'dine_in' and not order.table_id:
+              raise ValidationError(_("Đơn ăn tại bàn bắt buộc phải chỉ định bàn cụ thể!"))
+          elif order.fulfillment_type == 'takeaway' and (order.table_id or order.floor_id):
+              raise ValidationError(_("Đơn mang đi tuyệt đối không được liên kết với bàn ăn hoặc sảnh!"))
   ```
 
 ---
@@ -500,7 +528,10 @@ sequenceDiagram
 * **Route:** `GET /canteen/qr/<string:qr_token>`
 * **Quyền truy cập:** `auth='public'`, `type='http'`
 * **Kiểm tra Điều kiện Tiên quyết:**
-  * `restaurant.table` ứng với `qr_token` phải tồn tại và `active = True`.
+  * Tra cứu `qr_token`:
+    * *Trường hợp 1 (Ăn tại bàn):* Khớp với `restaurant.table` (`active = True`). Trả về giao diện kèm thông tin bàn: `table_name = table.name`, `floor_name = table.floor_id.name`, `is_takeaway = False`.
+    * *Trường hợp 2 (Mang đi tại quầy):* Khớp với `pos.config.takeaway_qr_token` (`takeaway_qr_active = True`). Trả về giao diện mang đi: `location_name = "Quầy Mang Đi (Takeaway)"`, `is_takeaway = True`.
+    * *Nếu không khớp cả hai:* Trả về trang lỗi HTTP 400: *"Mã QR không hợp lệ hoặc bàn ăn/quầy đã tạm dừng phục vụ"*.
   * Phải tồn tại ít nhất 1 phiên POS `pos.session` thuộc cấu hình Căn tin đang ở trạng thái `state = 'opened'`. Nếu không có, hiển thị thông báo: *"Căn tin hiện chưa mở ca bán hàng. Vui lòng liên hệ thu ngân!"*.
 * **Quy tắc Hiển thị Thực đơn (Menu Display & Out-of-Stock UX):**
   * Hệ thống truy vấn toàn bộ món ăn thỏa mãn điều kiện: `canteen_published = True` và `active = True`.
@@ -512,12 +543,11 @@ sequenceDiagram
 #### 2. Endpoint Khách Gửi Đơn Gọi món (Chống Trùng Lặp & Kiểm Tra Nguyên Tử)
 * **Route:** `POST /canteen/api/order/create`
 * **Quyền truy cập:** `auth='public'`, `type='json'`, `methods=['POST']`
-* **Contract Payload gửi lên (Client Request):**
+* **Contract Payload gửi lên (Client Request - Zero-Trust):**
   ```json
   {
     "idempotency_key": "c73a038b-8743-4140-8438-f13e77b18671",
     "qr_token": "aBcD_1234_TokenBàn_XyZ",
-    "fulfillment_type": "dine_in",
     "customer_name": "Nguyễn Văn A",
     "customer_phone": "0901234567",
     "lines": [
@@ -536,7 +566,7 @@ sequenceDiagram
     ]
   }
   ```
-  *(Ghi chú: `expected_price_unit` là đơn giá tại thời điểm khách bấm chọn món trên client, dùng để server đối soát chống sai lệch giá; Server **TUYỆT ĐỐI** không lấy giá này để lưu vào hóa đơn mà luôn dùng `list_price` của server).*
+  *(Ghi chú: Client **TUYỆT ĐỐI KHÔNG** gửi trường `fulfillment_type`. Server tự động phân định luồng `dine_in` hay `takeaway` dựa vào việc giải mã `qr_token` phía backend để chống hành vi gian lận).*
 
 * **Quy trình Xử lý Kiểm tra 4 Bước Phía Server (Strict Server-Side Validation Pipeline):**
   1. **Bước 1 — Xác thực Định danh & Khóa Idempotency:**
@@ -545,10 +575,14 @@ sequenceDiagram
      * Tra cứu `pos.order` theo `idempotency_key`:
        * *Nếu đã tồn tại và trùng `request_hash`:* Đây là yêu cầu gửi lại do mạng lag $\rightarrow$ Trả về ngay **`HTTP 200 OK` (Idempotent Replay)** kèm dữ liệu đơn cũ, tuyệt đối không tạo đơn mới.
        * *Nếu đã tồn tại nhưng khác `request_hash`:* Khách hàng tái sử dụng key cũ cho giỏ hàng khác $\rightarrow$ Từ chối và trả về **`HTTP 409 Conflict` (Lỗi `IDEMPOTENCY_PAYLOAD_MISMATCH`)**.
-  2. **Bước 2 — Khớp Bàn & Phiên POS:**
-     * Tìm `restaurant.table` theo `qr_token`. Nếu không tìm thấy $\rightarrow$ Trả về mã lỗi **`HTTP 400 Bad Request`**.
-     * Tự động gán `session_id` là phiên POS `opened` hiện hành.
-     * Tự động snapshot `floor_id = table.floor_id` vào `pos.order`.
+  2. **Bước 2 — Nhận diện Luồng Phục vụ & Khớp Phiên POS (Zero-Trust Resolution):**
+     * **Nhánh Ăn tại bàn (Dine-in):** Tra cứu `table = env['restaurant.table'].sudo().search([('qr_token', '=', qr_token), ('active', '=', True)], limit=1)`.
+       - Nếu tìm thấy bàn: Tự động gán `fulfillment_type = 'dine_in'`, `table_id = table.id`, `floor_id = table.floor_id.id`.
+       - Gán `session_id` là phiên POS `opened` hiện hành của sảnh.
+     * **Nhánh Mang đi (Takeaway):** Nếu không thấy bàn, tra cứu `pos_config = env['pos.config'].sudo().search([('takeaway_qr_token', '=', qr_token), ('takeaway_qr_active', '=', True)], limit=1)`.
+       - Nếu khớp mã quầy mang đi: Tự động gán `fulfillment_type = 'takeaway'`, `table_id = False`, `floor_id = False`.
+       - Gán `session_id = pos_config.current_session_id` (Yêu cầu phiên quầy phải đang `state = 'opened'`).
+     * **Mã không hợp lệ:** Nếu không khớp cả Bàn lẫn Quầy $\rightarrow$ Lập tức từ chối và trả về mã lỗi **`HTTP 400 Bad Request`** (*"Mã QR không hợp lệ hoặc đã ngừng phục vụ"*).
   3. **Bước 3 — Kiểm tra Nguyên tử Toàn vẹn (Atomic Validation - All-or-Nothing):**
      * Truy vấn thông tin mới nhất của toàn bộ `product_id` từ CSDL trong Savepoint.
      * Khởi tạo danh sách `invalid_items = []`.
