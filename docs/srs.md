@@ -97,7 +97,7 @@ flowchart LR
 Hệ thống phân định 5 nhóm tác nhân tương tác chính:
 1. **Quản lý Căn tin (Manager):** Cấu hình menu, định giá, mở/đóng ca ăn, xem toàn quyền báo cáo tài chính và cấu hình hệ thống.
 2. **Nhân viên Mua hàng / Kho (Purchaser / Stock Keeper):** Lập PO, nhận hàng, xử lý trả hàng/hàng thiếu, theo dõi mức tồn tối thiểu.
-3. **Nhân viên Bếp (Kitchen Chef / Staff):** Sử dụng màn hình KDS, cập nhật tiến độ nấu món (`received` $\rightarrow$ `preparing` $\rightarrow$ `ready`), bật/tắt cờ `canteen_available` khi hết nguyên liệu.
+3. **Nhân viên Bếp (Kitchen Chef / Staff):** Sử dụng màn hình KDS, cập nhật tiến độ nấu món (`received` $\rightarrow$ `preparing` $\rightarrow$ `ready`), bật/tắt cờ `canteen_is_out_of_stock` khi hết nguyên liệu.
 4. **Thu ngân / Phục vụ (Cashier / Waiter):** Đứng máy POS cảm ứng, kiểm tra đơn QR, xác nhận thanh toán tiền mặt/chuyển khoản, phục vụ món tại bàn hoặc quầy giao đồ.
 5. **Khách hàng (Sinh viên / Giảng viên / Khách vãng lai):** Quét mã QR gọi món tại bàn/mang đi không cần tài khoản; hoặc đăng nhập tài khoản UTH để đặt trước suất ăn theo ca.
 
@@ -186,7 +186,7 @@ flowchart TD
 1. **Giao diện Người dùng Quét mã QR (Mobile QR Interface):**
    * Thiết kế theo phong cách Mobile-first, nút bấm to bản hỗ trợ thao tác một tay trên smartphone.
    * Hiển thị rõ danh mục món ăn (ảnh đại diện, tên món, giá niêm yết VND, mô tả, nút thêm vào giỏ).
-   * Món có `canteen_available = False` tự động bị mờ (opacity 0.5), gắn nhãn "HẾT MÓN" và vô hiệu hóa nút đặt.
+   * Món có `canteen_is_out_of_stock = True` tự động bị mờ (opacity 0.5), gắn nhãn "HẾT MÓN" và vô hiệu hóa nút đặt (chỉ hiển thị các món có `canteen_published = True`).
    * Sau khi đặt, màn hình chuyển sang giao diện theo dõi tiến độ đơn hàng thời gian thực: Mã đơn, Bàn số, Trạng thái (`received` $\rightarrow$ `preparing` $\rightarrow$ `ready` $\rightarrow$ `completed`), tổng tiền cần thanh toán.
 2. **Giao diện Màn hình Bếp (Kitchen Display System - KDS):**
    * Giao diện dạng thẻ Kanban chia theo 3 cột tiến độ: **Chờ nấu (`received` - Nền vàng)**, **Đang nấu (`preparing` - Nền cam)**, **Sẵn sàng giao (`ready` - Nền xanh lá)**.
@@ -547,7 +547,7 @@ sequenceDiagram
         Bus-->>ThuNgan: Báo phục vụ lấy món bưng ra bàn
     else Bếp phát hiện hết món giữa chừng (Out of Stock Exception)
         Bep->>Odoo: Chạm nút "Báo hết món" trên KDS
-        Odoo->>Odoo: Cập nhật service_state = 'cancelled', canteen_available = False
+        Odoo->>Odoo: Cập nhật service_state = 'cancelled', canteen_is_out_of_stock = True
         Odoo->>Bus: Phát thông điệp khẩn cấp
         Bus-->>QR: Màn hình khách hiện popup: "Món đã hết, xin lỗi quý khách!"
         Bus-->>ThuNgan: Báo thu ngân hủy đơn / hoàn tiền cho khách

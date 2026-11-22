@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Placeholder / Scaffold for TV5 Record Rules (Row-Level Security) -->
+    </data>
+</odoo>

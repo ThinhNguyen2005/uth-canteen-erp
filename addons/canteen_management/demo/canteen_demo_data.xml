@@ -65,7 +65,8 @@
             <field name="uom_id" ref="uom.product_uom_unit"/>
             <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="canteen_available" eval="True"/>
+            <field name="canteen_published" eval="True"/>
+            <field name="canteen_is_out_of_stock" eval="False"/>
             <field name="canteen_category">rice</field>
             <field name="description_sale">Đùi gà góc tư chiên giòn, cơm chiên tỏi, canh rau và dưa chua.</field>
         </record>
@@ -78,7 +79,8 @@
             <field name="uom_id" ref="uom.product_uom_unit"/>
             <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="canteen_available" eval="True"/>
+            <field name="canteen_published" eval="True"/>
+            <field name="canteen_is_out_of_stock" eval="False"/>
             <field name="canteen_category">rice</field>
             <field name="description_sale">Sườn nướng mật ong, bì thái mỏng, chả trứng hấp, đồ chua và mỡ hành.</field>
         </record>
@@ -91,7 +93,8 @@
             <field name="uom_id" ref="uom.product_uom_unit"/>
             <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="canteen_available" eval="True"/>
+            <field name="canteen_published" eval="True"/>
+            <field name="canteen_is_out_of_stock" eval="False"/>
             <field name="canteen_category">rice</field>
             <field name="description_sale">Thịt bò xào đậu que giòn ngọt kèm canh rong biển.</field>
         </record>
@@ -105,7 +108,8 @@
             <field name="uom_id" ref="uom.product_uom_unit"/>
             <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="canteen_available" eval="True"/>
+            <field name="canteen_published" eval="True"/>
+            <field name="canteen_is_out_of_stock" eval="False"/>
             <field name="canteen_category">noodle</field>
             <field name="description_sale">Bún bò nước dùng đậm đà, thịt bò nạc, chả cua và rau ghém tươi.</field>
         </record>
@@ -118,7 +122,8 @@
             <field name="uom_id" ref="uom.product_uom_unit"/>
             <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="canteen_available" eval="True"/>
+            <field name="canteen_published" eval="True"/>
+            <field name="canteen_is_out_of_stock" eval="False"/>
             <field name="canteen_category">noodle</field>
             <field name="description_sale">Bánh phở mềm, bò tái nạm tươi ngon, nước hầm xương nguyên chất.</field>
         </record>
@@ -131,7 +136,8 @@
             <field name="uom_id" ref="uom.product_uom_unit"/>
             <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="canteen_available" eval="True"/>
+            <field name="canteen_published" eval="True"/>
+            <field name="canteen_is_out_of_stock" eval="False"/>
             <field name="canteen_category">noodle</field>
             <field name="description_sale">Mì Quảng chuẩn vị miền Trung, tôm tươi, thịt ba rọi và bánh tráng mè nướng.</field>
         </record>
@@ -145,7 +151,8 @@
             <field name="uom_id" ref="uom.product_uom_unit"/>
             <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="canteen_available" eval="True"/>
+            <field name="canteen_published" eval="True"/>
+            <field name="canteen_is_out_of_stock" eval="False"/>
             <field name="canteen_category">drink</field>
             <field name="description_sale">Cà phê Robusta Đắk Lắk đậm đà hòa quyện cùng sữa đặc Ông Thọ.</field>
         </record>
@@ -158,7 +165,8 @@
             <field name="uom_id" ref="uom.product_uom_unit"/>
             <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="canteen_available" eval="True"/>
+            <field name="canteen_published" eval="True"/>
+            <field name="canteen_is_out_of_stock" eval="False"/>
             <field name="canteen_category">drink</field>
             <field name="description_sale">Trà thảo mộc thơm mát kết hợp lát đào giòn ngọt và tinh dầu sả tươi.</field>
         </record>
@@ -171,7 +179,8 @@
             <field name="uom_id" ref="uom.product_uom_unit"/>
             <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="canteen_available" eval="True"/>
+            <field name="canteen_published" eval="True"/>
+            <field name="canteen_is_out_of_stock" eval="False"/>
             <field name="canteen_category">drink</field>
             <field name="description_sale">Trà lài thơm nức kết hợp chanh vàng tươi giã tay giải nhiệt mùa thi.</field>
         </record>
@@ -184,7 +193,8 @@
             <field name="uom_id" ref="uom.product_uom_unit"/>
             <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="canteen_available" eval="True"/>
+            <field name="canteen_published" eval="True"/>
+            <field name="canteen_is_out_of_stock" eval="False"/>
             <field name="canteen_category">drink</field>
             <field name="description_sale">Nước uống đóng chai tinh khiết.</field>
         </record>
@@ -198,7 +208,8 @@
             <field name="uom_id" ref="uom.product_uom_unit"/>
             <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="canteen_available" eval="True"/>
+            <field name="canteen_published" eval="True"/>
+            <field name="canteen_is_out_of_stock" eval="False"/>
             <field name="canteen_category">snack</field>
             <field name="description_sale">Bánh mì nóng giòn ăn kèm viên xíu mại sốt cà chua đậm đà.</field>
         </record>
@@ -211,7 +222,8 @@
             <field name="uom_id" ref="uom.product_uom_unit"/>
             <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="canteen_available" eval="True"/>
+            <field name="canteen_published" eval="True"/>
+            <field name="canteen_is_out_of_stock" eval="False"/>
             <field name="canteen_category">snack</field>
             <field name="description_sale">Bánh flan mềm mịn, béo ngậy thơm hương cà phê và cốt dừa Bến Tre.</field>
         </record>
@@ -225,7 +237,8 @@
             <field name="uom_id" ref="uom.product_uom_unit"/>
             <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="canteen_available" eval="True"/>
+            <field name="canteen_published" eval="True"/>
+            <field name="canteen_is_out_of_stock" eval="False"/>
             <field name="canteen_category">fastfood</field>
             <field name="description_sale">Bánh mì burger mè, đùi gà phi-lê giòn rụm, xà lách tươi và sốt cay.</field>
         </record>
