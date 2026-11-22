@@ -301,23 +301,26 @@ flowchart TD
 
 ### UC04: Quét QR Xem Thực đơn & Đặt món tại Bàn / Mang đi (QR Code Ordering & Idempotent Submission)
 * **Tác nhân chính:** Khách hàng (Sinh viên / Giảng viên).
-* **Điều kiện tiên quyết (Pre-conditions):** Khách hàng sử dụng điện thoại có camera quét mã QR dán trên bàn ăn (`restaurant.table.qr_token`) hoặc tại quầy Mang đi (Bàn ảo Takeaway); bàn ăn đang mở (`active = True`); có ít nhất một phiên POS đang hoạt động (`state = 'opened'`).
-* **Điều kiện sau khi thực hiện (Post-conditions):** Bản ghi `pos.order` được tạo ở trạng thái `service_state = 'received'`, `state = 'draft'`; lưu trữ `idempotency_key` và snapshot `floor_id`; gửi tín hiệu chuông báo cho bếp qua Odoo Bus.
+* **Điều kiện tiên quyết (Pre-conditions):** Khách hàng sử dụng điện thoại có camera quét mã QR dán trên bàn ăn (`restaurant.table.qr_token`) hoặc tại quầy Mang đi (`pos.config.takeaway_qr_token`); bàn ăn hoặc quầy đang mở phục vụ (`active = True`); có ít nhất một phiên POS đang hoạt động (`state = 'opened'`).
+* **Điều kiện sau khi thực hiện (Post-conditions):** Bản ghi `pos.order` được tạo ở trạng thái `service_state = 'received'`, `state = 'draft'`; lưu trữ `idempotency_key` và vị trí phục vụ (`table_id` và `floor_id` đối với ăn tại bàn; `table_id = null` và `floor_id = null` đối với mang đi); gửi tín hiệu chuông báo cho bếp qua Odoo Bus.
 * **Sự kiện kích hoạt (Trigger):** Khách hàng quét mã QR qua ứng dụng camera hoặc Zalo.
 * **Luồng sự kiện chính (Main Flow):**
   1. Trình duyệt mở đường dẫn công khai `/canteen/qr/<qr_token>`.
-  2. Hệ thống kiểm tra mã `qr_token` hợp lệ, tự động gán thông tin Bàn ăn (`table_id`), Sảnh (`floor_id = table.floor_id`) và trả về giao diện thực đơn các món được phép hiển thị (`canteen_published = True`).
+  2. Hệ thống kiểm tra mã `qr_token` hợp lệ, tự động phân định nguồn gốc phục vụ theo nguyên tắc **Zero-Trust**:
+     * *Nếu là QR Bàn ăn:* Gán thông tin Bàn (`table_id`), Sảnh (`floor_id = table.floor_id`), khóa hình thức `fulfillment_type = 'dine_in'`.
+     * *Nếu là QR Quầy Mang đi:* Gán `fulfillment_type = 'takeaway'`, `table_id = null`, `floor_id = null` (chuẩn Odoo POS gốc, tuyệt đối không dùng bàn ảo).
+     * Trả về giao diện thực đơn các món được phép hiển thị (`canteen_published = True`).
   3. **Hiển thị món hết hàng trực quan:** Các món đang tạm hết (`canteen_is_out_of_stock = True`) vẫn xuất hiện trên thực đơn nhưng tự động bị làm mờ (opacity 0.5), gắn nhãn **HẾT MÓN** và khóa nút thêm vào giỏ.
-  4. Khách hàng duyệt menu, chọn món, số lượng, chọn hình thức phục vụ (`dine_in` hoặc `takeaway`), nhập ghi chú khẩu vị (`customer_note`).
+  4. Khách hàng duyệt menu, chọn món, số lượng, nhập ghi chú khẩu vị (`customer_note`). Khách không cần tự chọn hình thức phục vụ vì hệ thống đã tự động xác thực và khóa cứng theo vị trí quét QR.
   5. Ứng dụng client tự động sinh một mã định danh yêu cầu duy nhất `idempotency_key` (chuỗi UUIDv4) và chụp lại đơn giá niêm yết mà khách đang nhìn thấy (`expected_price_unit`) cho từng dòng món.
   6. Khách hàng nhấn nút "Gửi Đơn Đặt Món".
   7. **Hệ thống thực thi Kiểm tra 4 Bước Phía Server:**
      * *Kiểm tra Idempotency:* Nếu `idempotency_key` đã tồn tại và khớp nội dung giỏ hàng $\rightarrow$ Hệ thống chuyển sang Luồng Ngoại lệ **Ex 3** (trả về đơn cũ, không tạo đơn mới). Nếu khác nội dung giỏ hàng $\rightarrow$ Chuyển sang Luồng Ngoại lệ **Ex 4**.
      * *Kiểm tra Nguyên tử (Atomic Validation):* Hệ thống đối soát toàn bộ các món trong đơn. Nếu phát hiện bất kỳ món nào đã bị bếp đánh dấu hết (`canteen_is_out_of_stock = True`) hoặc đơn giá niêm yết trên hệ thống đã thay đổi so với `expected_price_unit` $\rightarrow$ Chuyển sang Luồng Ngoại lệ **Ex 2** (từ chối toàn bộ đơn hàng an toàn).
-     * *Khởi tạo Đơn hàng An toàn Đa luồng:* Hệ thống tạo bản ghi `pos.order` với `service_state = 'received'`, sinh mã Token tra cứu ngẫu nhiên (UUIDv4) cho phiên của khách, chụp snapshot `floor_id` và bắt ngoại lệ va chạm khóa để đảm bảo an toàn đa luồng trên Odoo worker.
-  8. Màn hình KDS của Bếp kích hoạt chuông reo báo có đơn mới. Trình duyệt khách hàng chuyển sang màn hình theo dõi tiến độ món theo thời gian thực.
+     * *Khởi tạo Đơn hàng An toàn Đa luồng:* Hệ thống tạo bản ghi `pos.order` với `service_state = 'received'`, sinh mã Token tra cứu ngẫu nhiên (UUIDv4) cho phiên của khách, cập nhật `service_location_display` và bắt ngoại lệ va chạm khóa để đảm bảo an toàn đa luồng trên Odoo worker.
+  8. Màn hình KDS của Bếp kích hoạt chuông reo báo có đơn mới (đơn mang về hiển thị nổi bật nhãn `[MANG VỀ - TO GO]`). Trình duyệt khách hàng chuyển sang màn hình theo dõi tiến độ món theo thời gian thực.
 * **Luồng thay thế (Alternative Flows):**
-  * *Alt 1 — Đặt món mang đi tại quầy Takeaway:* Khách quét mã QR tại quầy Takeaway (Bàn ảo hệ thống), hệ thống tự động khóa `fulfillment_type = 'takeaway'` và trỏ tới bản ghi Bàn ảo tương ứng.
+  * *Alt 1 — Đặt món mang đi tại quầy Takeaway:* Khách quét mã QR tại quầy Mang đi (`pos.config.takeaway_qr_token`), hệ thống tự động khóa `fulfillment_type = 'takeaway'`, `table_id = null`, `floor_id = null`. Đơn hàng xuất hiện trên màn hình danh sách phiếu chờ (Ticket Screen) của thu ngân thay vì chiếm chỗ trên sơ đồ mặt bằng sảnh POS.
 * **Luồng ngoại lệ (Exception Flows):**
   * *Ex 1 — Mã QR không hợp lệ hoặc bàn đã đóng (`active = False`):* Hệ thống trả về giao diện thông báo lỗi: "Mã bàn không tồn tại hoặc bàn ăn đang tạm dừng phục vụ. Vui lòng liên hệ nhân viên căn tin". Chặn mọi thao tác đặt món.
   * *Ex 2 — Kiểm tra Nguyên tử Thất bại do hết món hoặc đổi giá (Atomic Validation Failure — HTTP 409):* Trong lúc khách đang chọn món, bếp vừa báo hết hàng hoặc quản lý vừa điều chỉnh giá niêm yết. Hệ thống từ chối toàn bộ đơn hàng (Rollback All), giữ nguyên giỏ hàng của khách và hiển thị popup cảnh báo chi tiết theo chuẩn RFC 7807 liệt kê rõ ràng từng món bị lỗi (món nào hết, món nào đổi từ giá bao nhiêu sang bao nhiêu). Khách hàng điều chỉnh lại giỏ hàng hoặc xác nhận giá mới rồi nhấn gửi lại.
@@ -517,7 +520,7 @@ sequenceDiagram
         Odoo-->>QR: Trả về trang báo lỗi "Bàn không khả dụng"
     else Token hợp lệ
         Odoo-->>QR: Trả về menu các món canteen_published=True (kèm cờ is_out_of_stock)
-        Khach->>QR: Chọn món, số lượng, hình thức (Dine-in/Takeaway), ghi chú
+        Khach->>QR: Chọn món, số lượng, ghi chú khẩu vị
         QR->>QR: Sinh idempotency_key (UUIDv4) & Chụp expected_price_unit
         Khach->>QR: Nhấn "Gửi Đơn Đặt Món"
         QR->>Odoo: POST /canteen/api/order/create (idempotency_key, lines, expected_prices)
