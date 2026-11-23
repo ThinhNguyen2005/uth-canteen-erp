@@ -157,6 +157,9 @@ config/odoo.conf
 *.sql
 *.dump
 *.backup
+backups/temp_*
+backups/restore_inspect_*
+backups/*_backup_*
 .envrc
 .venv
 env/
