@@ -1,0 +1,6 @@
+﻿"id","name","supplier_rank","customer_rank","email","phone","street","city","vat"
+"__import__.partner_supplier_an_sang","Công ty Thực phẩm An Sáng UTH","1","0","purchasing@ansang.example","0000000001","Địa chỉ mô phỏng 01","Thành phố Hồ Chí Minh","DEMO-VAT-0001"
+"__import__.partner_supplier_da_lat","Hợp tác xã Nông sản Đà Lạt Xanh","1","0","sales@dalatxanh.example","0000000002","Địa chỉ mô phỏng 02","Đà Lạt","DEMO-VAT-0002"
+"__import__.partner_supplier_tan_thuan","Công ty Thực phẩm Tân Thuận","1","0","order@tanthuan.example","0000000003","Địa chỉ mô phỏng 03","Thành phố Hồ Chí Minh","DEMO-VAT-0003"
+"__import__.partner_supplier_vinh_hao","Nhà phân phối Đồ uống Sông Xanh","1","0","sales@songxanh.example","0000000004","Địa chỉ mô phỏng 04","Thành phố Hồ Chí Minh","DEMO-VAT-0004"
+"__import__.partner_supplier_gia_vi_viet","Công ty Gia vị Hương Việt","1","0","contact@huongviet.example","0000000005","Địa chỉ mô phỏng 05","Thành phố Hồ Chí Minh","DEMO-VAT-0005"
