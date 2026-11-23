@@ -1,0 +1,13 @@
+﻿Mã ca,Trạng thái,Ngày giờ,Người chạy,Database và quầy,Mã phiên,Mã đơn,Tiền đầu ca,Tiền cuối ca thực đếm,Phương thức thanh toán,Kết quả thực tế,Ảnh cần lưu,Đường dẫn bằng chứng,Lý do N/A hoặc lỗi
+TC-POS-01,Chưa thực hiện,,,,,,,,,,"Quầy, phiên và tiền đầu ca",,
+TC-POS-02,Chưa thực hiện,,,,,,,,,,"Giỏ, thanh toán, biên lai và mã đơn",,
+TC-POS-03,Chưa thực hiện,,,,,,,,,,Giỏ sau chỉnh và biên lai,,
+TC-POS-04,Chưa thực hiện,,,,,,,,,,"Giỏ, thuế, giảm giá và biên lai",,
+TC-POS-05,Chưa thực hiện,,,,,,,,,,"Tiền nhận, tiền thừa và biên lai",,
+TC-POS-06,Chưa thực hiện,,,,,,,,,,Màn thanh toán và phương thức trên đơn,,
+TC-POS-07,Chưa thực hiện,,,,,,,,,,Kết quả tìm kiếm và chi tiết đơn,,
+TC-POS-08,Chưa thực hiện,,,,,,,,,,"Tổng kết phiên, tiền đầu/cuối và màn đóng ca",,
+TC-POS-09,Chưa thực hiện,,,,,,,,,,"Tồn trước/sau cùng vị trí, dòng đơn và phiếu xuất hoàn tất",,
+TC-POS-10,Chưa thực hiện,,,,,,,,,,"Bộ lọc, danh sách đơn gốc và Pivot",,
+TC-POS-11,Chưa thực hiện,,,,,,,,,,"Dòng đơn, Pivot theo sản phẩm và bộ lọc",,
+TC-POS-12,Chưa thực hiện,,,,,,,,,,"Quyền quản lý, thông báo bị chặn và màn bán của thu ngân",,
