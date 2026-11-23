@@ -1,0 +1,21 @@
+﻿external_id,sku,ten_san_pham,nhom_mon,don_vi_nguon,gia_tham_khao_vnd,nguon_trang_thai,phe_duyet_gia,thue_da_xac_nhan,kiem_thu_odoo
+product_rice_chicken,UTH-RICE-01,Cơm gà xối mỡ giòn rụm UTH,rice,uom.product_uom_unit,35000,TV3_REUSE_AGREED; Odoo_PRODUCT_AND_STOCK_WORKFLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_rice_broken,UTH-RICE-02,Cơm tấm sườn bì chả đặc biệt,rice,uom.product_uom_unit,40000,TV3_REUSE_AGREED; Odoo_PRODUCT_AND_STOCK_WORKFLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_rice_beef,UTH-RICE-03,Cơm bò xào đậu que,rice,uom.product_uom_unit,35000,TV3_REUSE_AGREED; Odoo_PRODUCT_AND_STOCK_WORKFLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_noodle_beef,UTH-NOODLE-01,Bún bò Huế giò nạc UTH,noodle,uom.product_uom_unit,35000,TV3_REUSE_AGREED; Odoo_PRODUCT_AND_STOCK_WORKFLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_noodle_pho,UTH-NOODLE-02,Phở bò tái nạm gia truyền,noodle,uom.product_uom_unit,35000,TV3_REUSE_AGREED; Odoo_PRODUCT_AND_STOCK_WORKFLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_noodle_quang,UTH-NOODLE-03,Mì Quảng tôm thịt trứng cút,noodle,uom.product_uom_unit,35000,TV3_REUSE_AGREED; Odoo_PRODUCT_AND_STOCK_WORKFLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_drink_coffee_milk,UTH-DRINK-01,Cà phê sữa đá pha phin,drink,uom.product_uom_unit,18000,TV3_REUSE_AGREED; Odoo_PRODUCT_AND_STOCK_WORKFLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_drink_peach_tea,UTH-DRINK-02,Trà đào cam sả thanh nhiệt,drink,uom.product_uom_unit,22000,TV3_REUSE_AGREED; Odoo_PRODUCT_AND_STOCK_WORKFLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_drink_lemon_tea,UTH-DRINK-03,Trà chanh giã tay hoa lài,drink,uom.product_uom_unit,15000,TV3_REUSE_AGREED; Odoo_PRODUCT_AND_STOCK_WORKFLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_drink_water,UTH-DRINK-04,Nước khoáng thiên nhiên Aquafina 500ml,drink,uom.product_uom_unit,8000,TV3_REUSE_AGREED; Odoo_PRODUCT_AND_STOCK_WORKFLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_snack_bread,UTH-SNACK-01,Bánh mì xíu mại trứng muối,snack,uom.product_uom_unit,20000,TV3_REUSE_AGREED; Odoo_PRODUCT_AND_STOCK_WORKFLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_snack_flan,UTH-SNACK-02,Bánh Flan cà phê nước cốt dừa,snack,uom.product_uom_unit,12000,TV3_REUSE_AGREED; Odoo_PRODUCT_AND_STOCK_WORKFLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_fastfood_burger,UTH-FAST-01,Burger gà giòn sốt cay Mayonnaise UTH,fastfood,uom.product_uom_unit,30000,TV3_REUSE_AGREED; Odoo_PRODUCT_AND_STOCK_WORKFLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_rice_pork_honey,UTH-RICE-04,Cơm sườn nướng mật ong,rice,uom.product_uom_unit,35000,PENDING_TV3_REVIEW; PRICE_AND_BUSINESS_FLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_rice_fish_braised,UTH-RICE-05,Cơm cá kho tộ,rice,uom.product_uom_unit,38000,PENDING_TV3_REVIEW; PRICE_AND_BUSINESS_FLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_noodle_hu_tieu,UTH-NOODLE-04,Hủ tiếu Nam Vang đặc biệt,noodle,uom.product_uom_unit,35000,PENDING_TV3_REVIEW; PRICE_AND_BUSINESS_FLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_drink_kumquat_honey,UTH-DRINK-05,Trà tắc mật ong,drink,uom.product_uom_unit,15000,PENDING_TV3_REVIEW; PRICE_AND_BUSINESS_FLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_snack_fries,UTH-SNACK-03,Khoai tây chiên giòn,snack,uom.product_uom_unit,18000,PENDING_TV3_REVIEW; PRICE_AND_BUSINESS_FLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_snack_meat_bun,UTH-SNACK-04,Bánh bao nhân thịt,snack,uom.product_uom_unit,18000,PENDING_TV3_REVIEW; PRICE_AND_BUSINESS_FLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
+product_fastfood_fried_chicken,UTH-FAST-02,Gà rán giòn cay,fastfood,uom.product_uom_unit,32000,PENDING_TV3_REVIEW; PRICE_AND_BUSINESS_FLOW_PENDING,Chờ duyệt,Chưa xác nhận,Chưa thực hiện
