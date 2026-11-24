@@ -1,4 +1,4 @@
-﻿# ERP-17 – Purchase & Inventory Configuration Test Report
+# ERP-17 – Purchase & Inventory Configuration Test Report
 
 **Owner:** TV2 – Purchase & Inventory
 **Environment:** Odoo Community 20.0
