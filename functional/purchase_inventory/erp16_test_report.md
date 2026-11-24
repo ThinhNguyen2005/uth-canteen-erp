@@ -1,43 +1,48 @@
-﻿# ERP-16 – CSV Import Test Report
+# ERP-16 – CSV Import Test Report
 
 ## 1. Test information
 
 - Jira Task: ERP-16
 - Responsible: TV2 – Purchase & Inventory
-- Database: uth_canteen_erp13_test
-- Execution Date: 2026-11-23
-- Status: Executed – Pending Review
+- Database used for the earlier import: `uth_canteen_erp13_test`
+- Earlier execution date: 2026-11-23
+- Current status: **Pending re-test after TV1 Request Changes**
 
-## 2. Product import
+## 2. Earlier test results (before review fixes)
 
-| Test | Expected result | Actual result | Status |
-|---|---|---|---|
-| Import products.csv | 20 products imported | 20 products imported | PASS |
-| Unique SKU validation | 20 unique SKUs | 20 unique SKUs | PASS |
-| POS availability | 20 products enabled | 20 products enabled | PASS |
-| Re-import products.csv | No duplicate products | Product count remained 20 | PASS |
+The earlier test run imported the original `products.csv` into `product.template` and verified 20 products, unique SKUs and POS availability. Those results are retained as historical evidence only.
 
-## 3. Supplier import
+They do **not** validate the corrected External IDs, the `product.product` target model, or the two canteen-specific fields. The earlier PASS results must not be treated as acceptance of this revised CSV.
+
+## 3. Required re-test
 
 | Test | Expected result | Actual result | Status |
 |---|---|---|---|
-| Import suppliers.csv | 5 suppliers imported | 5 suppliers imported | PASS |
+| Import products.csv into `product.product` | 20 product variants resolve/import | Not yet executed | PENDING |
+| Resolve 13 canonical product External IDs | Existing XML variants are updated; no duplicate variants | Not yet executed | PENDING |
+| Verify product fields | 20 rows have `canteen_published=True` and valid `canteen_category` | Not yet executed | PENDING |
+| Unique SKU validation | 20 unique SKUs | Not yet executed | PENDING |
+| Re-import products.csv | No additional product variants | Not yet executed | PENDING |
+| Import suppliers.csv | Five contacts resolve using the same IDs as `demo_suppliers.csv` | Not yet executed | PENDING |
+| Re-import suppliers.csv | No duplicate supplier contacts | Not yet executed | PENDING |
 
-## 4. Evidence
+## 4. Evidence required
 
-- Product import completed successfully in Odoo.
-- Supplier import completed successfully in Odoo.
-- Product SQL validation confirmed 20 products, 20 unique SKUs and 20 POS-enabled products.
-- Repeated product import did not increase the product count.
+Capture updated Odoo evidence after re-testing:
+
+- Product Variant import preview showing the target model and External ID mapping.
+- Import result showing the 13 canonical IDs were matched to existing variants.
+- Product list or SQL evidence showing 20 unique SKUs and both canteen fields.
+- Before/after counts proving product re-import does not create duplicates.
+- Supplier import preview/result and before/after counts proving the five canonical supplier IDs resolve without duplicates.
 
 ## 5. Limitations
 
-- Supplier re-import idempotency has not been separately verified.
+- Supplier details are fictional test data.
+- Product list prices are POS selling prices, not supplier purchase prices.
 - Product costs and recipe costing are outside this task's import scope.
-- Supplier records are fictional demonstration data.
+- The revised import has not yet been executed; no new PASS result is claimed.
 
 ## 6. Conclusion
 
-The product and supplier CSV imports were successful in the test database.
-Product count, SKU uniqueness and POS availability met the expected results.
-Pending peer review and PR acceptance.
+The four review corrections have been applied to the CSV files and import documentation. ERP-16 remains **Pending re-test and TV1 re-review** until the required Odoo checks and evidence are completed.
