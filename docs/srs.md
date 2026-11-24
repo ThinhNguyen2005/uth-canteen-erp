@@ -363,9 +363,9 @@ flowchart TD
      ```
   6. Hệ thống kiểm tra điều kiện an toàn đồng thời:
      * Nếu `booked_count + quantity <= capacity`:
-       * Tăng `booked_count = booked_count + quantity`.
-       * Nếu `booked_count == capacity` thì cập nhật `state = 'full'`.
-       * Tạo bản ghi `canteen.meal.booking` với `state = 'confirmed'`, sinh mã phiếu `BKG-YYYYMMDD-XXXX`.
+       * Tạo bản ghi `canteen.meal.booking` trực tiếp ở trạng thái `state = 'confirmed'` (không qua bước draft trong luồng công khai), sinh mã phiếu `BKG-YYYYMMDD-XXXX` và `access_token` UUIDv4.
+       * Kích hoạt Computed Stored Field tự động tính lại `booked_count` trên ca ăn từ tổng các phiếu `confirmed` và `served` (tuyệt đối không cộng tay thủ công).
+       * Nếu sau khi tính lại `booked_count >= capacity` thì tự động cập nhật `state = 'full'`.
        * Commit giao dịch CSDL.
        * Trả về màn hình thông báo Đặt chỗ thành công kèm mã QR phiếu nhận suất ăn.
 * **Luồng ngoại lệ (Exception Flows):**
@@ -408,10 +408,11 @@ flowchart TD
      * Nếu khách chưa thanh toán: Đơn bị hủy tự động, khách không cần trả tiền.
      * Nếu khách đã thanh toán trước tại quầy: Màn hình thu ngân hiển thị cảnh báo hoàn tiền. Thu ngân gửi trả tiền mặt hoặc chuyển khoản lại cho khách, ghi nhận nghiệp vụ hoàn tiền trên POS.
 * **Kịch bản B — Khách hàng tự hủy phiếu đặt suất ăn theo ca (Early Cancellation):**
-  1. Sinh viên bấm "Hủy phiếu đặt" trước giờ bắt đầu ca tối thiểu 30 phút.
-  2. Hệ thống thực hiện khóa dòng ca ăn: Giảm `booked_count = booked_count - quantity`.
-  3. Nếu ca ăn đang `full` thì tự động mở lại trạng thái `open`.
-  4. Chuyển phiếu đặt sang `state = 'cancelled'`. Sinh viên được hoàn lại quota đặt chỗ.
+  1. Sinh viên bấm "Hủy phiếu đặt" trước giờ bắt đầu ca tối thiểu 30 phút (hệ thống kiểm tra phiếu đang ở `state == 'confirmed'`).
+  2. Hệ thống thực hiện khóa dòng ca ăn (`SELECT ... FOR UPDATE`) để tuần tự hóa xử lý.
+  3. Chuyển phiếu đặt sang `state = 'cancelled'`. (Bảo đảm tính lũy đẳng Idempotent: gọi hủy lặp lại sẽ bị từ chối, không làm thay đổi số chỗ lần nữa).
+  4. Kích hoạt Computed Stored Field tự động tính toán lại `booked_count` từ các phiếu còn hiệu lực (`confirmed` và `served`), tuyệt đối không trừ tay thủ công.
+  5. Nếu ca ăn đang `full` và sau khi tính lại có chỗ trống (`booked_count < capacity`) thì hệ thống tự động mở lại trạng thái `open`. Sinh viên được hoàn lại quota đặt chỗ.
 * **Kịch bản C — Tự động xử lý bỏ quên suất ăn (No-Show Auto Expiration via Cron Job):**
   1. Hệ thống chạy Odoo Automated Cron Job định kỳ mỗi 15 phút.
   2. Cron quét các ca ăn có `now() > end_at + 15 phút` mà vẫn ở trạng thái `open` hoặc `full`.
@@ -585,8 +586,8 @@ sequenceDiagram
     Web->>Engine: Gửi yêu cầu đặt suất
     Engine->>DB: Kích hoạt giao dịch: SELECT ... FOR UPDATE trên ca ăn
     alt Sức chứa còn trống (booked_count + 1 <= capacity)
-        Engine->>DB: Tăng booked_count = booked_count + 1
         Engine->>DB: Tạo canteen.meal.booking (state='confirmed', mã BKG-XXXX)
+        Engine->>DB: Tự động tính lại booked_count qua Computed Field
         DB-->>Engine: Commit Transaction thành công
         Engine-->>Web: Trả về Phiếu đặt chỗ BKG-XXXX kèm mã QR
         Web-->>SV: Hiển thị phiếu giữ chỗ thành công

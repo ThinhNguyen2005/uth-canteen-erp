@@ -320,7 +320,7 @@ Model mới quản lý lượt đăng ký giữ chỗ suất ăn của Sinh viê
 | Người đặt suất | `partner_id` | `fields.Many2one` | Có | comodel='res.partner', ondelete='restrict', index=True | Tài khoản sinh viên / cán bộ thực hiện đặt chỗ. |
 | Ca ăn đăng ký | `slot_id` | `fields.Many2one` | Có | comodel='canteen.meal.slot', ondelete='restrict', index=True | Ca ăn được chọn. |
 | Số suất đặt | `quantity` | `fields.Integer` | Có | default=1 | Số lượng suất ăn. Ràng buộc SQL: `CHECK(quantity >= 1 AND quantity <= 3)`. |
-| Trạng thái phiếu | `state` | `fields.Selection` | Có | default='draft', index=True, tracking=True | `[('draft', 'Tạm'), ('confirmed', 'Đã xác nhận'), ('served', 'Đã nhận phần ăn'), ('cancelled', 'Đã hủy')]`. |
+| Trạng thái phiếu | `state` | `fields.Selection` | Có | default='confirmed', index=True, tracking=True | `[('draft', 'Nháp (Nội bộ)'), ('confirmed', 'Đã xác nhận'), ('served', 'Đã nhận phần ăn'), ('cancelled', 'Đã hủy')]`. Luồng đặt công khai tự động tạo `confirmed` ngay sau khi khóa slot và kiểm tra sức chứa. `draft` chỉ dành cho tạo nháp thủ công nội bộ backend. |
 | Thời điểm đặt | `booked_at` | `fields.Datetime` | Có | default=fields.Datetime.now, readonly=True | Thời gian giao dịch được xác nhận (UTC). |
 | Ghi chú suất ăn | `note` | `fields.Char` | Không | size=255 | Ghi chú thêm (VD: "Lấy phần cơm chay"). |
 
@@ -334,10 +334,10 @@ Model mới quản lý lượt đăng ký giữ chỗ suất ăn của Sinh viê
   ```
 * **PostgreSQL Partial Unique Index (Chống spam đặt trùng ca ăn cho 1 đối tượng):**
   ```sql
-  -- Chặn 1 đối tượng tạo nhiều booking còn hiệu lực trên cùng 1 ca ăn
+  -- Chặn 1 đối tượng tạo nhiều booking còn hiệu lực trên cùng 1 ca ăn (chống spam giữ chỗ)
   CREATE UNIQUE INDEX idx_unique_active_partner_meal_slot 
   ON canteen_meal_booking (partner_id, slot_id) 
-  WHERE state IN ('draft', 'confirmed');
+  WHERE state = 'confirmed';
   ```
 
 ---
@@ -394,6 +394,31 @@ flowchart TD
 
 ---
 
+### 4.2. Ma trận Chuyển đổi Trạng thái Đặt trước Suất ăn (`canteen.meal.booking`)
+
+```mermaid
+stateDiagram-v2
+    [*] --> confirmed: Đặt thành công (Public QR Flow, kiểm tra slot & capacity)
+    [*] --> draft: Tạo nháp nội bộ backend (Chưa chiếm chỗ)
+    draft --> confirmed: Duyệt / Xác nhận nội bộ (Khóa slot & chiếm chỗ)
+    draft --> cancelled: Hủy phiếu nháp nội bộ
+    confirmed --> served: Thu ngân / Phục vụ check-in nhận suất tại quầy
+    confirmed --> cancelled: Khách tự hủy trước hạn 30p hoặc Cron No-show (+15p)
+    served --> [*]: Kết thúc thành công (Terminal State)
+    cancelled --> [*]: Kết thúc hủy (Terminal State)
+```
+
+| Từ trạng thái $\rightarrow$ Đến trạng thái | Tác nhân | Điều kiện chuyển trạng thái | Tác động sức chứa (`booked_count`) | Tính lũy đẳng (Idempotency) |
+| :--- | :--- | :--- | :--- | :--- |
+| **`[*]` $\rightarrow$ `confirmed`** | Sinh viên / Cán bộ | Ca đang `open`, $1 \le qty \le 3$, còn đủ sức chứa | Tự động tính lại qua Computed Field: `booked_count` tăng đúng `quantity`. Nếu đầy, slot đổi sang `full`. | Unique partial index `(partner_id, slot_id) WHERE state = 'confirmed'` chặn đặt trùng trong cùng ca. |
+| **`[*]` $\rightarrow$ `draft`** | Admin / Căn tin | Tạo nháp backend nội bộ | Chưa chiếm chỗ (`booked_count` không đổi vì chỉ tính `confirmed` và `served`). | Không giới hạn quota nháp. |
+| **`draft` $\rightarrow$ `confirmed`** | Quản lý Căn tin | Ca còn `open`, đủ sức chứa | Khóa slot, chiếm chỗ, tính lại `booked_count`. | Nếu ca hết chỗ, báo lỗi không cho duyệt. |
+| **`confirmed` $\rightarrow$ `served`** | Thu ngân / Phục vụ | Phiếu còn `confirmed`, đúng khung giờ phục vụ của ca | Giữ nguyên suất ăn trong `booked_count` (vì `served` vẫn chiếm chỗ). | Quét lại lần 2 bị chặn ngay (Double-serve prevention). |
+| **`confirmed` $\rightarrow$ `cancelled` (Khách hủy)** | Người đặt suất | Trước giờ bắt đầu ca tối thiểu 30 phút (`now <= start_at - 30p`) | Tính lại qua Computed Field: `booked_count` giảm đúng `quantity`. Nếu slot đang `full` thì tự động mở lại `open`. | **Idempotent:** Phiếu đã hủy không thể trừ số chỗ thêm lần nữa; gọi lại bị từ chối. |
+| **`confirmed` $\rightarrow$ `cancelled` (No-show)** | Cron định kỳ 15p | Sau giờ kết thúc ca 15 phút (`now > end_at + 15p`), phiếu chưa `served` | Ghi nhận lý do No-show; ca đã đóng (`closed`) giữ nguyên. | Cron quét lại bỏ qua các phiếu đã `cancelled`. |
+
+---
+
 ## 5. Đặc tả Xử lý Đồng thời & Khóa Dữ liệu (Concurrency & Anti-Deadlock)
 
 ### 5.1. Thách thức Race Condition trong Đặt suất ăn theo Ca
@@ -405,10 +430,10 @@ Vào giờ cao điểm (ví dụ 10h00 sáng khi mở cổng đăng ký ca trưa
 1. Mọi nghiệp vụ đăng ký suất ăn phải thực hiện bên trong 1 Database Transaction duy nhất.
 2. Khóa dòng bản ghi `canteen.meal.slot` bằng mệnh đề `SELECT ... FOR UPDATE` trước khi thực hiện bất kỳ phép so sánh hoặc ghi dữ liệu nào.
 3. **Thứ tự khóa tài nguyên (Lock Ordering) triệt tiêu Deadlock 100%:**
-   * **BƯỚC 1:** Khóa bảng cha `canteen.meal.slot` theo thứ tự `id ASC`.
+   * **BƯỚC 1:** Khóa dòng bảng cha `canteen.meal.slot` (`SELECT ... FOR UPDATE NOWAIT`) theo thứ tự `id ASC`.
    * **BƯỚC 2:** Tính toán và kiểm tra điều kiện sức chứa: `slot.booked_count + requested_qty <= slot.capacity`.
-   * **BƯỚC 3:** Tạo bản ghi `canteen.meal.booking`.
-   * **BƯỚC 4:** Tự động cập nhật `booked_count` trên `canteen.meal.slot` và chuyển `state = 'full'` nếu đạt hạn mức.
+   * **BƯỚC 3:** Tạo bản ghi `canteen.meal.booking` ở trạng thái `state = 'confirmed'` (không qua bước draft trong luồng công khai).
+   * **BƯỚC 4:** Kích hoạt Computed Stored Field tự động tính lại `booked_count` trên `canteen.meal.slot`; tự động chuyển `state = 'full'` nếu `booked_count >= capacity` (hoặc mở lại `open` khi hủy). Tuyệt đối không cộng/trừ tay thủ công.
    * **BƯỚC 5:** Commit giao dịch giải phóng khóa dòng.
 
 #### Cấu trúc Code Mẫu Chuẩn Odoo 20 ORM (Tham chiếu triển khai cho TV4):
@@ -430,7 +455,8 @@ class CanteenMealBooking(models.Model):
     def create_booking_safe(self, partner_id, slot_id, quantity=1, note=False):
         """
         Tạo lượt đặt suất ăn an toàn đồng thời tuyệt đối (Concurrency-Safe).
-        Sử dụng SELECT ... FOR UPDATE trên PostgresSQL 16.
+        Sử dụng SELECT ... FOR UPDATE trên PostgreSQL 16.
+        Tạo booking ở trạng thái confirmed ngay và tự động tính lại booked_count qua Computed Field.
         """
         if quantity < 1 or quantity > 3:
             raise ValidationError(_("Số lượng suất đặt phải từ 1 đến 3!"))
@@ -459,11 +485,10 @@ class CanteenMealBooking(models.Model):
             raise UserError(_("Ca ăn hiện không mở nhận đặt chỗ!"))
 
         # BƯỚC 2: Kiểm tra sức chứa an toàn tuyệt đối
-        new_booked_count = slot_data['booked_count'] + quantity
-        if new_booked_count > slot_data['capacity']:
+        if slot_data['booked_count'] + quantity > slot_data['capacity']:
             raise UserError(_("Ca ăn đã hết suất trống! Hiện chỉ còn %s suất.") % (slot_data['capacity'] - slot_data['booked_count']))
 
-        # BƯỚC 3: Tạo bản ghi booking
+        # BƯỚC 3: Tạo bản ghi booking trực tiếp ở trạng thái confirmed (không qua draft)
         booking = self.create({
             'partner_id': partner_id,
             'slot_id': slot_id,
@@ -472,15 +497,39 @@ class CanteenMealBooking(models.Model):
             'state': 'confirmed',
         })
 
-        # BƯỚC 4: Cập nhật booked_count và state ngay trong transaction
-        new_state = 'full' if new_booked_count >= slot_data['capacity'] else 'open'
-        cr.execute("""
-            UPDATE canteen_meal_slot 
-            SET booked_count = %s, state = %s 
-            WHERE id = %s
-        """, (new_booked_count, new_state, slot_id))
+        # BƯỚC 4: Kích hoạt Computed Stored Field tự động tính lại booked_count từ các booking confirmed/served
+        slot = self.env['canteen.meal.slot'].browse(slot_id)
+        slot._compute_booked_count()
+        if slot.booked_count >= slot.capacity and slot.state != 'full':
+            slot.state = 'full'
 
         return booking
+
+    def action_cancel_booking(self):
+        """
+        Hủy phiếu đặt suất ăn an toàn đồng thời (Idempotent & Concurrency-Safe).
+        Khóa ca ăn, chuyển state sang cancelled và kích hoạt computed field tính lại số chỗ.
+        """
+        for booking in self:
+            if booking.state != 'confirmed':
+                raise UserError(_("Chỉ có thể hủy phiếu đang ở trạng thái Đã xác nhận (confirmed)!"))
+            
+            # Khóa dòng ca ăn để đồng bộ tính toán
+            self.env.cr.execute(
+                "SELECT id, capacity, state FROM canteen_meal_slot WHERE id = %s FOR UPDATE;", 
+                (booking.slot_id.id,)
+            )
+            
+            # Chuyển trạng thái sang cancelled
+            booking.state = 'cancelled'
+            
+            # Kích hoạt Computed field tự động kéo booked_count về, tuyệt đối không trừ tay
+            booking.slot_id._compute_booked_count()
+            
+            # Tự động mở lại ca nếu ca đang full mà sau khi hủy còn chỗ trống
+            if booking.slot_id.state == 'full' and booking.slot_id.booked_count < booking.slot_id.capacity:
+                booking.slot_id.state = 'open'
+        return True
 ```
 
 ---
