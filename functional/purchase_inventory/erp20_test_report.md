@@ -69,7 +69,7 @@ Evidence:
 
 ### T02 – Low Stock / Reordering Rule
 
-**Mục tiêu:** Kiểm tra quy tắc bổ sung hàng khi tồn kho xuống dưới mức tối thiểu.
+**Mục tiêu:** Kiểm tra cấu hình quy tắc bổ sung hàng khi tồn kho xuống dưới mức tối thiểu và xác minh số lượng cần bổ sung theo forecast.
 
 Thông tin kiểm thử:
 
@@ -82,29 +82,33 @@ Thông tin kiểm thử:
 | Unit of Measure | Units |
 | On Hand Quantity | 1 Unit |
 | Reserved Quantity | 0 Unit |
+| Incoming Quantity | 1 Unit |
+| Forecast Quantity | 2 Units |
 | Trigger | Auto |
 | Minimum Quantity | 5 Units |
 | Maximum Quantity | 10 Units |
+| Calculated Quantity to Order | 8 Units |
 | Rule ID | 2 |
 | Active | True |
 
 Thực hiện:
 1. Kiểm tra tồn kho thực tế của sản phẩm.
 2. Tạo/cấu hình Reordering Rule cho đúng sản phẩm và vị trí kho.
-3. Xác minh trigger là Auto.
-4. Kiểm tra mức tồn tối thiểu 5 và tối đa 10.
-5. Truy vấn stock_warehouse_orderpoint và stock_quant để xác minh.
+3. Xác minh trigger là Auto, minimum là 5 và maximum là 10.
+4. Kiểm tra forecast và số lượng cần bổ sung bằng Odoo Shell.
+5. Truy vấn stock_warehouse_orderpoint và stock_quant để xác minh cấu hình và tồn kho.
 
-**Expected Result:** Quy tắc được gắn đúng sản phẩm, đúng vị trí kho và tồn kho hiện tại thấp hơn mức tối thiểu.
+**Expected Result:** Quy tắc được gắn đúng sản phẩm và vị trí kho; hệ thống tính toán lượng cần bổ sung để đưa forecast lên mức tối đa.
 
-**Actual Result:** SQL xác nhận tồn kho là 1 Unit, thấp hơn minimum 5 Units; quy tắc ID 2 đang active với trigger Auto và maximum 10 Units.
+**Actual Result:** Rule ID 2 đang active với trigger Auto, minimum 5 và maximum 10 Units. On Hand là 1 Unit; có 1 Unit incoming từ backorder WH/IN/00010 nên Forecast là 2 Units. Odoo Shell xác nhận Quantity to Order là 8 Units.
 
-**Verdict: PASS**
+**Limitation:** Chưa thực hiện Scheduler/action replenishment để xác minh việc tự động tạo RFQ. Supplier Info của sản phẩm hiện có giá 0 VND; do chưa xác minh được giá mua hợp lệ, không chạy replenishment để tránh tạo chứng từ mua hàng với giá không phù hợp. Backorder ERP-19 được giữ nguyên.
+
+**Verdict: PASS – Reordering Rule Configuration and Quantity Calculation. Automatic RFQ Creation: Not Tested.**
 
 Evidence:
 - `evidence/ERP-20/erp20_t02_reordering_rule.png`
 - `evidence/ERP-20/erp20_t02_sql_verification.png`
-
 ### T03 – Stockout / Zero Stock
 
 **Mục tiêu:** Kiểm tra tồn kho sản phẩm sau khi xuất toàn bộ số lượng hiện có.
