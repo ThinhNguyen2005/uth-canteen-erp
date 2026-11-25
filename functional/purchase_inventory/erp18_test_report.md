@@ -1,4 +1,4 @@
-﻿# ERP-18 – Sample Purchase Orders Test Report
+# ERP-18 – Sample Purchase Orders Test Report
 
 **Project:** UTH Canteen ERP  
 **Jira:** ERP-18  
