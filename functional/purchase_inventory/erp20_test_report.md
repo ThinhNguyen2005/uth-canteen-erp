@@ -1,4 +1,4 @@
-﻿# [ERP-20][TV2] Báo cáo kiểm thử điều chỉnh tồn, nhập thiếu và hàng sắp hết
+# [ERP-20][TV2] Báo cáo kiểm thử điều chỉnh tồn, nhập thiếu và hàng sắp hết
 
 ## 1. Thông tin chung
 
