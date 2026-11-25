@@ -120,7 +120,15 @@ Evidence screenshots are stored under:
 - All five incoming receipts remain in Ready status and have not been validated.
 - This test verifies purchase order creation, confirmation, receipt generation, and quantity/amount reconciliation. It does not verify physical stock receipt or inventory valuation.
 
-## 8. Conclusion
+## 8. Peer Review Notes
+
+- Phạm vi hiện tại gồm 5 PO, sử dụng 4/5 nhà cung cấp DEMO đã khai báo trong danh mục.
+- Nhà cung cấp Sông Xanh chưa được sử dụng trong 5 PO mẫu. Đây là phạm vi mở rộng độ bao phủ nhà cung cấp, không ảnh hưởng điều kiện tối thiểu 5 PO của bài ERP-18.
+- Không thay thế nhà cung cấp của các PO hiện tại vì các sản phẩm đã được phân công theo nhóm hàng và cấu hình nhà cung cấp tương ứng.
+- Sản phẩm sữa đặc và dầu ăn đang sử dụng UoM sản phẩm đang cấu hình là `Đơn vị` (Unit), không phải kg. TV3 cần lưu ý UoM này khi cấu hình dữ liệu POS; không tự quy đổi sang lon hoặc lít nếu chưa xác nhận quy cách đóng gói.
+- Giá và số lượng trong các PO là dữ liệu DEMO phục vụ kiểm thử, không đại diện giao dịch thực tế.
+
+## 9. Conclusion
 
 ERP-18 sample purchase order testing is completed for five Purchase Orders across four suppliers.
 
