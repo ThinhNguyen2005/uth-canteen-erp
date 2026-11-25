@@ -1,0 +1,4 @@
+source_key,odoo_product_template_id,odoo_external_id,product_name,location,quantity,uom,standard_cost_vnd,reserved_qty,available_qty,source_database,record_status
+erp23_opening_st25,23,__import__.raw_rice_st25,Gạo thơm ST25 Thượng hạng (Bao 25kg),WH/Tồn kho,245,kg,240000,0,245,uth_canteen_erp13_test,VERIFIED_SNAPSHOT
+erp23_opening_pho,27,__import__.raw_pho_noodle,Bánh phở tươi truyền thống trong ngày,WH/Tồn kho,30,kg,180000,0,30,uth_canteen_erp13_test,VERIFIED_SNAPSHOT
+erp23_opening_condensed_milk,30,__import__.raw_condensed_milk,Sữa đặc có đường Ông Thọ xanh lá (Thùng 48 lon),WH/Tồn kho,1,Unit,11200000,0,1,uth_canteen_erp13_test,VERIFIED_SNAPSHOT
