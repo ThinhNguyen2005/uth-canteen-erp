@@ -1,1 +1,2 @@
-# Business models require an agreed data contract.
+# -*- coding: utf-8 -*-
+from . import canteen_meal_slot
