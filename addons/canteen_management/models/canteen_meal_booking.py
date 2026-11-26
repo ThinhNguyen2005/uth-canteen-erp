@@ -119,6 +119,16 @@ class CanteenMealBooking(models.Model):
     )
 
     @api.model
+    def _validate_quantity_value(self, quantity):
+        if (
+            not isinstance(quantity, int)
+            or isinstance(quantity, bool)
+            or quantity < 1
+            or quantity > 3
+        ):
+            raise ValidationError(_("Mỗi lượt đặt chỉ được phép từ 1 đến 3 suất ăn!"))
+
+    @api.model
     def _validate_locked_slot_capacity(
         self, slot_data, requested_qty, exc_cls=ValidationError
     ):
@@ -274,13 +284,7 @@ class CanteenMealBooking(models.Model):
             raise ValidationError(_("Người đặt suất không hợp lệ!"))
         if not isinstance(slot_id, int) or isinstance(slot_id, bool) or slot_id <= 0:
             raise ValidationError(_("Ca ăn không hợp lệ!"))
-        if (
-            not isinstance(quantity, int)
-            or isinstance(quantity, bool)
-            or quantity < 1
-            or quantity > 3
-        ):
-            raise ValidationError(_("Mỗi lượt đặt chỉ được phép từ 1 đến 3 suất ăn!"))
+        self._validate_quantity_value(quantity)
 
         self._check_create_permission(partner_id, "confirmed", self._is_manager())
 
@@ -352,10 +356,13 @@ class CanteenMealBooking(models.Model):
         seq_model = self.env["ir.sequence"].sudo()
         is_manager = self._is_manager()
         requested_by_slot = {}
+        confirmed_pairs = set()
 
         for vals in vals_list:
             vals = dict(vals)
             state = vals.get("state", "confirmed")
+            if not is_manager and not vals.get("partner_id"):
+                vals["partner_id"] = self.env.user.partner_id.id
             self._check_create_permission(vals.get("partner_id"), state, is_manager)
 
             if vals.get("booking_ref") in (None, False, "", "/"):
@@ -363,18 +370,25 @@ class CanteenMealBooking(models.Model):
                     seq_model.next_by_code("canteen.meal.booking")
                     or f"BKG-{uuid.uuid4().hex[:12].upper()}"
                 )
-            if "access_token" not in vals or vals["access_token"] is False:
+            token = vals.get("access_token")
+            if token is None or token is False or (isinstance(token, str) and not token.strip()):
                 vals["access_token"] = str(uuid.uuid4())
 
             qty = vals.get("quantity", 1)
-            if isinstance(qty, int) and not isinstance(qty, bool):
-                if qty < 1 or qty > 3:
-                    raise ValidationError(
-                        _("Mỗi lượt đặt chỉ được phép từ 1 đến 3 suất ăn!")
-                    )
-                slot_id = vals.get("slot_id")
-                if slot_id and state == "confirmed":
-                    requested_by_slot[slot_id] = requested_by_slot.get(slot_id, 0) + qty
+            self._validate_quantity_value(qty)
+            slot_id = vals.get("slot_id")
+            if slot_id and state == "confirmed":
+                partner_id = vals.get("partner_id")
+                if partner_id:
+                    pair = (partner_id, slot_id)
+                    if pair in confirmed_pairs:
+                        raise ValidationError(
+                            _(
+                                "Mỗi người đặt chỉ được có một phiếu đã xác nhận cho cùng một ca ăn!"
+                            )
+                        )
+                    confirmed_pairs.add(pair)
+                requested_by_slot[slot_id] = requested_by_slot.get(slot_id, 0) + qty
 
             prepared_vals.append(vals)
 
@@ -398,6 +412,23 @@ class CanteenMealBooking(models.Model):
         changed_fields = set(vals)
         target_state = vals.get("state")
         target_slot_id = vals.get("slot_id")
+        is_manager = self._is_manager()
+
+        if (
+            self
+            and not is_manager
+            and not self.env.context.get("canteen_allow_state_write")
+        ):
+            if not self.env.user.has_group("canteen_management.group_canteen_user"):
+                raise AccessError(_("Bạn không có quyền chỉnh sửa phiếu đặt suất ăn!"))
+            for booking in self:
+                if booking.partner_id != self.env.user.partner_id:
+                    raise AccessError(
+                        _("Bạn chỉ được phép chỉnh sửa phiếu đặt suất của chính mình!")
+                    )
+
+        if "quantity" in vals:
+            self._validate_quantity_value(vals["quantity"])
 
         if "state" in vals:
             allow_direct = self.env.su or self.env.context.get(
@@ -421,7 +452,6 @@ class CanteenMealBooking(models.Model):
 
         locked_touched = changed_fields & self.LOCKED_FIELDS_AFTER_DRAFT
         if locked_touched:
-            is_manager = self._is_manager()
             for booking in self:
                 if booking.state != "draft":
                     raise ValidationError(
@@ -532,6 +562,8 @@ class CanteenMealBooking(models.Model):
             )
 
         reserved_by_slot = {}
+        confirmed_pairs = set()
+        booking_su = self.sudo()
         for booking in self:
             if booking.state == "confirmed":
                 raise UserError(_("Phiếu đặt suất đã được xác nhận trước đó!"))
@@ -544,6 +576,22 @@ class CanteenMealBooking(models.Model):
             slot_data = locked_slots.get(slot_id)
             if not slot_data:
                 raise UserError(_("Ca ăn không tồn tại trong hệ thống!"))
+
+            pair = (booking.partner_id.id, slot_id)
+            if pair in confirmed_pairs or booking_su.search_count(
+                [
+                    ("id", "!=", booking.id),
+                    ("partner_id", "=", booking.partner_id.id),
+                    ("slot_id", "=", slot_id),
+                    ("state", "=", "confirmed"),
+                ]
+            ):
+                raise UserError(
+                    _(
+                        "Mỗi người đặt chỉ được có một phiếu đã xác nhận cho cùng một ca ăn!"
+                    )
+                )
+            confirmed_pairs.add(pair)
 
             projected = dict(slot_data)
             projected["booked_count"] = slot_data["booked_count"] + reserved_by_slot.get(
@@ -587,6 +635,11 @@ class CanteenMealBooking(models.Model):
                 raise UserError(_("Trạng thái phiếu hiện tại không thể hủy!"))
 
             if booking.state == "confirmed" and not is_manager:
+                slot_data = locked_slots.get(booking.slot_id.id)
+                if slot_data and slot_data["state"] == "closed":
+                    raise UserError(
+                        _("Ca ăn đã đóng, không thể tự hủy phiếu đặt suất!")
+                    )
                 deadline = booking.slot_id.start_at - timedelta(
                     minutes=self.CANCEL_DEADLINE_MINUTES
                 )

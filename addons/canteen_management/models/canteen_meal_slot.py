@@ -163,7 +163,27 @@ class CanteenMealSlot(models.Model):
                     {"state": "open"}
                 )
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        self._check_manager_access()
+        return super().create(vals_list)
+
     def write(self, vals):
+        if not self.env.context.get("canteen_allow_slot_state_write"):
+            self._check_manager_access()
+        if vals.get("active") is False and self.ids:
+            active_bookings = self.env["canteen.meal.booking"].sudo().search_count(
+                [
+                    ("slot_id", "in", self.ids),
+                    ("state", "=", "confirmed"),
+                ]
+            )
+            if active_bookings:
+                raise UserError(
+                    _(
+                        "Không thể vô hiệu hóa ca ăn đang còn phiếu đặt chỗ đã xác nhận!"
+                    )
+                )
         if "state" in vals:
             target_state = vals["state"]
             allow_direct = self.env.su or self.env.context.get(
@@ -188,6 +208,10 @@ class CanteenMealSlot(models.Model):
         if "capacity" in vals and "state" not in vals:
             self._sync_capacity_state()
         return res
+
+    def unlink(self):
+        self._check_manager_access()
+        return super().unlink()
 
     def action_open_slot(self):
         self._check_manager_access()
