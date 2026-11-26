@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="vi"><meta charset="utf-8"><title>ERP-47 · Action visibility</title>
-<style>body{font:16px system-ui;margin:2rem;color:#28242b}header{background:#714b67;color:white;padding:1rem}label{display:block;margin:1rem 0}select,button{font:inherit;padding:.4rem}button{margin:.3rem;background:#714b67;color:white;border:0;border-radius:4px}a{color:#714b67}</style>
+<style>body{font:16px system-ui;margin:2rem;color:#28242b}header{background:#714b67;color:white;padding:1rem}label{display:block;margin:1rem 0}[hidden]{display:none}select,button{font:inherit;padding:.4rem}button{margin:.3rem;background:#714b67;color:white;border:0;border-radius:4px}a{color:#714b67}</style>
 <header>Canteen Management / Action visibility</header>
 <p>Mockup tương tác. Booking và quyền truy cập đang chờ duyệt.</p>
 <p><a href="booking-list.html">Bookings</a> · <a href="meal-slot-list.html">Meal Slots</a></p>
@@ -9,12 +9,14 @@
 <label>Trạng thái <select id="state"></select></label>
 <label><input type="checkbox" id="inactive"> Ca đã lưu trữ</label>
 <label>Sức chứa <input id="capacity" type="number" min="0" value="10"></label>
+<label id="booking-cutoff" hidden>Phút còn lại trước ca <input id="minutes" type="number" step="any" value="30"></label>
 <p id="status" aria-live="polite"></p><div id="actions"></div>
 <script>
 const get = id => document.getElementById(id);
 const states = {slot: ['draft','open','full','closed'], booking: ['draft','confirmed','served','cancelled']};
 function render(reset = false) {
     const screen = get('screen').value;
+    get('booking-cutoff').hidden = screen !== 'booking';
     if (reset) get('state').replaceChildren(...states[screen].map(value => new Option(value, value)));
     const state = get('state').value;
     const role = get('role').value;
@@ -25,8 +27,9 @@ function render(reset = false) {
     }
     if (screen === 'booking') {
         if (role === 'manager' && state === 'draft') actions.push('Confirm','Cancel');
-        if (role === 'owner' && state === 'confirmed') actions.push('Cancel (trước hạn)');
-        if (role === 'manager' && state === 'confirmed') actions.push('Cancel','Serve'); if (role === 'cashier' && state === 'confirmed') actions.push('Serve');
+        if (role === 'owner' && state === 'confirmed' && get('minutes').valueAsNumber >= 30) actions.push('Cancel (đúng hạn)');
+        if (role === 'manager' && state === 'confirmed') actions.push('Cancel','Serve');
+        if (role === 'cashier' && state === 'confirmed') actions.push('Serve');
     }
     get('status').textContent = states[screen].map(value => value === state ? '[' + value + ']' : value).join(' / ') +
         (state === 'full' ? ' · Ca đã đầy' : '');
@@ -39,6 +42,6 @@ function render(reset = false) {
     if (!actions.length) get('actions').textContent = 'Không có nút phù hợp với lựa chọn.';
 }
 get('screen').onchange = () => render(true);
-for (const id of ['role','state','inactive','capacity']) get(id).onchange = () => render();
+for (const id of ['role','state','inactive','capacity','minutes']) get(id).onchange = () => render();
 render(true);
 </script></html>
