@@ -1,4 +1,4 @@
-﻿# ERP-47 — Mockup quản lý suất ăn
+# ERP-47 — Mockup quản lý suất ăn
 
 Đây là bản phác thảo tĩnh, dữ liệu minh họa; không kết nối Odoo. Mở booking-list.html, booking-form.html, meal-slot-list.html, meal-slot-form.html và search-and-error-states.html trong trình duyệt. Tất cả role, nút và workflow cần TV4/TV1 review; không dùng làm bằng chứng backend.
 

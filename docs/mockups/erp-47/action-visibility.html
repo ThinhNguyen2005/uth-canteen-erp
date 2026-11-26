@@ -24,9 +24,9 @@ function render(reset = false) {
         if (['open','full'].includes(state)) actions.push('Close Slot');
     }
     if (screen === 'booking') {
-        if (role === 'manager' && state === 'draft') actions.push('Confirm');
+        if (role === 'manager' && state === 'draft') actions.push('Confirm','Cancel');
         if (role === 'owner' && state === 'confirmed') actions.push('Cancel (trước hạn)');
-        if (role === 'cashier' && state === 'confirmed') actions.push('Serve (trong giờ ca)');
+        if (role === 'manager' && state === 'confirmed') actions.push('Cancel','Serve'); if (role === 'cashier' && state === 'confirmed') actions.push('Serve');
     }
     get('status').textContent = states[screen].map(value => value === state ? '[' + value + ']' : value).join(' / ') +
         (state === 'full' ? ' · Ca đã đầy' : '');

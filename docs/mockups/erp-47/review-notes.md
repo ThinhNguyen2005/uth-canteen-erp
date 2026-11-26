@@ -1,4 +1,4 @@
-﻿# Review notes — ERP-47
+# Review notes — ERP-47
 
 ## Workflow đề xuất, chưa phê duyệt
 
@@ -24,3 +24,5 @@
 - Xác nhận tên fields/actions, XML IDs, timezone và quyền truy cập theo role.
 
 TV1 review docs và phối hợp manifest cho các task sau. Đây chỉ là mockup tĩnh; không xác nhận thiết kế hoặc quyền đã duyệt.
+
+PR #40: phiếu thường confirmed ngay. Draft nội bộ của Manager không giữ suất; Manager Confirm/Cancel. Manager/Cashier Serve confirmed; chỉ owner hủy confirmed trước ca ít nhất 30 phút, Manager có ngoại lệ. Served/cancelled là terminal. Index chống trùng chỉ áp dụng confirmed. Remaining là giá trị thiết kế, không phải field.
