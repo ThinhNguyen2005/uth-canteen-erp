@@ -8,32 +8,37 @@
             <field name="sequence">20</field>
         </record>
 
+        <record id="privilege_canteen" model="res.groups.privilege">
+            <field name="name">Canteen Management</field>
+            <field name="category_id" ref="module_category_canteen"/>
+        </record>
+
         <!-- Group: Customer / Student (End User) -->
         <record id="group_canteen_user" model="res.groups">
             <field name="name">Customer / Student</field>
-            <field name="category_id" ref="module_category_canteen"/>
+            <field name="privilege_id" ref="privilege_canteen"/>
         </record>
 
         <!-- Group: Kitchen Staff -->
         <record id="group_canteen_kitchen" model="res.groups">
             <field name="name">Kitchen Staff</field>
-            <field name="category_id" ref="module_category_canteen"/>
+            <field name="privilege_id" ref="privilege_canteen"/>
             <field name="implied_ids" eval="[(4, ref('group_canteen_user'))]"/>
         </record>
 
         <!-- Group: Cashier / Waiter -->
         <record id="group_canteen_cashier" model="res.groups">
             <field name="name">Cashier / Waiter</field>
-            <field name="category_id" ref="module_category_canteen"/>
+            <field name="privilege_id" ref="privilege_canteen"/>
             <field name="implied_ids" eval="[(4, ref('group_canteen_user'))]"/>
         </record>
 
         <!-- Group: Canteen Manager (Full Rights) -->
         <record id="group_canteen_manager" model="res.groups">
             <field name="name">Canteen Manager</field>
-            <field name="category_id" ref="module_category_canteen"/>
+            <field name="privilege_id" ref="privilege_canteen"/>
             <field name="implied_ids" eval="[(4, ref('group_canteen_kitchen')), (4, ref('group_canteen_cashier'))]"/>
-            <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+            <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
         </record>
     </data>
 </odoo>

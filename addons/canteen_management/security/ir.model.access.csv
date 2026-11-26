@@ -1,6 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-# Access rights template for models (uncomment after TV4 models PR is merged):
-# access_canteen_meal_slot_user,canteen.meal.slot.user,model_canteen_meal_slot,group_canteen_user,1,0,0,0
-# access_canteen_meal_slot_manager,canteen.meal.slot.manager,model_canteen_meal_slot,group_canteen_manager,1,1,1,1
-# access_canteen_meal_booking_user,canteen.meal.booking.user,model_canteen_meal_booking,group_canteen_user,1,1,1,0
-# access_canteen_meal_booking_manager,canteen.meal.booking.manager,model_canteen_meal_booking,group_canteen_manager,1,1,1,1
