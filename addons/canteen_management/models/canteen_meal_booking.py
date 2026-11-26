@@ -198,14 +198,11 @@ class CanteenMealBooking(models.Model):
                     ) from err
                 if pgcode in ("40001", "40P01"):
                     _logger.warning(
-                        "Transaction contention (%s) on canteen.meal.slot ids %s: %s",
+                        "Transaction contention (%s) on canteen.meal.slot ids %s; propagating for transaction retry: %s",
                         pgcode,
                         ids_to_lock,
                         err,
                     )
-                    raise UserError(
-                        _("Giao dịch đặt suất gặp xung đột đồng thời, vui lòng thử lại!")
-                    ) from err
                 raise
 
         reused_ids = [sid for sid in ordered_ids if sid in already_locked]
