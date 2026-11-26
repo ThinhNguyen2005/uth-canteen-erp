@@ -14,4 +14,7 @@ for order_id, lines, kind, total in cases:
     assert order.currency_id.name == "USD"
 cancelled = env["pos.order"].browse(32).exists()
 assert cancelled and cancelled.state == "cancel" and not cancelled.payment_ids
-print("KAN146_ORM_OK five sales, cash/bank, closed sessions and cancelled draft; USD synthetic test")
+refund = env["pos.order"].browse(33).exists()
+assert refund and refund.state == "done" and refund.amount_total == -40000 and refund.amount_paid == -40000
+assert refund.session_id.state == "closed" and refund.payment_ids.payment_method_id.type == "cash"
+print("KAN146_ORM_OK five sales, cancelled draft and cash refund; USD synthetic test")
