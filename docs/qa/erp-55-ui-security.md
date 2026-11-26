@@ -14,3 +14,5 @@ BLOCKED cho nghiệm thu tích hợp. Các kết quả dưới đây dựa trên
 | SEC-02 | Các role | Direct URL, RPC và server-side authorization | Không truy cập/thay đổi ngoài quyền | Chưa chạy | BLOCKED | TV4/TV5 |
 
 Retest sau khi slot/booking, ACL và manifest sẵn sàng. Đối chiếu dữ liệu trước/sau và chạy hồi quy với tài khoản thường. Log cài ERP-53: KeyError ir.model.access. Không có ảnh giao diện tích hợp.
+
+Cập nhật ed18146: system ORM fixture retest PASS ca không được lưu open với capacity = 0. Cài fixture với menu và view exit 0, chưa xác minh truy cập UI theo role. ERP-42/43 và phê duyệt ACL vẫn là điều kiện bắt buộc.
