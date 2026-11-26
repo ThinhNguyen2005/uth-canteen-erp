@@ -1,28 +1,23 @@
 # Review notes — ERP-47
 
-## Workflow đề xuất, chưa phê duyệt
+## Workflow theo PR #38 và #40
 
-1. Tạo booking: chọn ca và số suất; kiểm tra quyền, ca mở và capacity. Baseline SRS tạo confirmed trực tiếp; KAN-159 đề xuất draft. Cần chốt.
-2. Confirm: draft → confirmed khi ca open và đủ chỗ; backend phải khóa slot và kiểm tra lại.
-3. Cancel: draft hoặc confirmed → cancelled; confirmed yêu cầu đúng owner và trước hạn 30 phút theo SRS, giải phóng capacity. Quyền ngoại lệ chờ xác nhận.
-4. Serve: cashier check-in confirmed → served trong giờ ca; served vẫn chiếm capacity. Cần xác nhận action và phản hồi khi gọi lại.
-5. Lỗi validation, hết suất hoặc thiếu quyền: giữ dữ liệu, hiển thị thông báo; enforcement phía server.
+1. Phiếu thường tạo ở confirmed. Draft nội bộ của Manager không giữ suất.
+2. Confirm chuyển draft → confirmed sau kiểm tra ca và capacity. Kiểm thử khóa slot chờ ERP-43.
+3. Cancel chuyển draft hoặc confirmed → cancelled. Hủy confirmed hoàn suất.
+4. Serve chuyển confirmed → served. Served vẫn chiếm suất.
+5. Served và cancelled kết thúc. Action lặp trả UserError. Lỗi validation, hết suất và thiếu quyền được xử lý phía server.
 
-| Nút | State đề xuất | Role đề xuất | Trạng thái |
-|---|---|---|---|
-| Confirm | draft | Manager; quyền người đặt chưa chốt | Pending Review |
-| Cancel | draft/confirmed | Owner trong hạn; ngoại lệ chưa chốt | Pending Review |
-| Serve | confirmed | Cashier | Pending Review |
+| Nút | State | Role |
+|---|---|---|
+| Confirm | draft | Manager |
+| Cancel | draft | Manager |
+| Cancel | confirmed | Manager ngoại lệ hoặc Booking User sở hữu phiếu và còn ít nhất 30 phút trước ca |
+| Serve | confirmed | Manager hoặc Cashier |
 
-## Câu hỏi TV4 / TV1
+## Nội dung chờ TV4 và TV1
 
-- Booking user internal hay portal? Ownership có dựa vào partner_id không?
-- Confirm trực tiếp khi tạo hay draft? Ai xác nhận/hủy ngoại lệ?
-- Duplicate áp dụng draft và confirmed hay chỉ confirmed? Đặt lại sau served?
-- Hủy/serve lặp trả trạng thái hay từ chối? Có served_at không?
-- Khi nào slot được mở lại? Cron no-show và quyền direct state write được bảo vệ thế nào?
-- Xác nhận tên fields/actions, XML IDs, timezone và quyền truy cập theo role.
-
-TV1 review docs và phối hợp manifest cho các task sau. Đây chỉ là mockup tĩnh; không xác nhận thiết kế hoặc quyền đã duyệt.
-
-PR #40: phiếu thường confirmed ngay. Draft nội bộ của Manager không giữ suất; Manager Confirm/Cancel. Manager/Cashier Serve confirmed; chỉ owner hủy confirmed trước ca ít nhất 30 phút, Manager có ngoại lệ. Served/cancelled là terminal. Index chống trùng chỉ áp dụng confirmed. Remaining là giá trị thiết kế, không phải field.
+- Chốt internal/portal, phạm vi quyền ORM và quyền hiển thị khi quyền cộng dồn.
+- Chốt cửa sổ giờ phục vụ và no-show với SRS.
+- Xác minh timezone và rule chuyển trạng thái slot khi tích hợp.
+- TV1 review docs và phối hợp manifest. Mockup minh họa giao diện; kiểm thử quyền nghiệp vụ thực hiện trên addon tích hợp.
