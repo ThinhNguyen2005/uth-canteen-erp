@@ -56,5 +56,5 @@
     </record>
     <menuitem id="menu_canteen_meal_slots" name="Meal Slots"
               parent="menu_canteen_configuration" action="action_canteen_meal_slots"
-              groups="group_canteen_manager,group_canteen_manager" sequence="10"/>
+              groups="group_canteen_manager" sequence="10"/>
 </odoo>
