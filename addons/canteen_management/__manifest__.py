@@ -61,9 +61,7 @@ Tác nhân & Phân quyền (Roles & Security):
         # 1. Security: Phân quyền nhóm người dùng (Security Groups & Categories)
         "security/canteen_security.xml",
         # 2. Security: Phân quyền truy cập mô hình dữ liệu (Access Control Lists - ACL)
-        "security/ir.model.access.csv",
-        # 3. Security: Quy tắc bản ghi theo vai trò (Record Rules / Row-Level Security)
-        "security/canteen_rules.xml",
+        "security/ir.access.csv",
         # 4. Data: Dữ liệu khởi tạo & Định nghĩa Sequence sinh mã đặt suất
         "data/ir_sequence_data.xml",
         # 5. Views: Giao diện kế thừa các phân hệ chuẩn Odoo
