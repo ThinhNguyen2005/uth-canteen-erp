@@ -19,12 +19,12 @@ CONFIRMED từ security XML: group_canteen_kitchen và group_canteen_cashier imp
 |---|---|---|---|
 | Create | Booking User | Owner chính mình; slot open; 1–3; chưa trùng; capacity đủ | PROPOSED |
 | Confirm | Manager (draft nội bộ) | draft; khóa slot; capacity đủ | PENDING REVIEW; luồng public xác nhận trực tiếp |
-| Cancel | Owner | confirmed trước start_at ít nhất 30 phút; draft cần chốt | PENDING REVIEW |
-| Serve | Cashier | confirmed; trong giờ ca; không phát hai lần | PROPOSED |
+| Cancel | Manager; Booking User chính chủ | Manager xử lý draft/confirmed. Chính chủ chỉ hủy confirmed khi còn ít nhất 30 phút | Action đối chiếu PR #40; ACL PENDING REVIEW |
+| Serve | Manager hoặc Cashier | confirmed, ca active và open/full; không phát hai lần | Action đối chiếu PR #40; giới hạn giờ phục vụ PENDING REVIEW |
 | No-show | Cron | confirmed; sau end_at +15 phút | SRS yêu cầu; implementation MISSING |
-| Sửa quantity/slot/owner | Booking User | Chỉ draft nếu được duyệt; confirmed khóa | PENDING REVIEW |
+| Sửa quantity/slot/owner | Booking User | Deny sau confirmed. Draft là phiếu nội bộ của Manager | Guard và phạm vi sửa draft PENDING REVIEW |
 | Sửa capacity | Manager | Không nhỏ hơn booked_count | PROPOSED |
-| Delete booking | Tất cả | Chưa có lý do nghiệp vụ | PROPOSED deny |
+| Delete booking | Vai trò nghiệp vụ thông thường | Deny; dùng Cancel theo policy | TV4 xác nhận; ACL chờ ERP-42/53 |
 | Xem booking người khác | Cashier/Manager | Phạm vi cần phục vụ/ngoại lệ | PENDING REVIEW |
 
 ACL cộng dồn theo mọi group, không thu hồi quyền cấp bởi group khác. Cách kết hợp domain trên ir.access cần được xác minh bằng test tích hợp trước khi áp dụng ma trận. Owner domain candidate [('partner_id', '=', user.partner_id.id)] cần xác minh field và yêu cầu; không áp dụng global rule khiến manager/cashier mất truy cập. Quyền tạo không chứng minh client không giả owner: backend phải gán/kiểm tra partner_id. Bảo vệ action và direct write state/quantity/slot/partner tại server; ẩn nút không thay thế ACL/rule/guards. Kiểm tra user nhiều group và group chuẩn khác; không dùng sudo để né quyền.
