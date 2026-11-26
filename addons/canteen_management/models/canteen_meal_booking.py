@@ -59,6 +59,7 @@ class CanteenMealBooking(models.Model):
         comodel_name="res.partner",
         string="Người đặt suất",
         required=True,
+        default=lambda self: False if self._is_manager() else self.env.user.partner_id,
         ondelete="restrict",
         index=True,
         tracking=True,
@@ -67,6 +68,7 @@ class CanteenMealBooking(models.Model):
         comodel_name="canteen.meal.slot",
         string="Ca ăn đăng ký",
         required=True,
+        domain="[('state', '=', 'open')]",
         ondelete="restrict",
         index=True,
         tracking=True,
@@ -87,6 +89,7 @@ class CanteenMealBooking(models.Model):
         string="Trạng thái",
         required=True,
         default="confirmed",
+        copy=False,
         index=True,
         tracking=True,
     )
@@ -94,6 +97,7 @@ class CanteenMealBooking(models.Model):
         string="Thời điểm đặt",
         required=True,
         default=fields.Datetime.now,
+        copy=False,
         readonly=True,
     )
     note = fields.Char(

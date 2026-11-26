@@ -68,6 +68,7 @@ class CanteenMealSlot(models.Model):
         string="Trạng thái",
         required=True,
         default="draft",
+        copy=False,
         index=True,
         tracking=True,
     )
