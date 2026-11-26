@@ -14,4 +14,8 @@ for row in rows:
     p = products[0]
     assert p.name == row["ten_san_pham"] and p.uom_id == env.ref(row["don_vi_nguon"])
     assert p.available_in_pos and Decimal(str(p.list_price)) == Decimal(row["gia_tham_khao_vnd"])
-print("KAN147_REGRESSION_OK 20 unique SKU, names, UoM, POS flag and reference prices")
+order = env["pos.order"].browse(35).exists()
+assert order and order.state == "paid" and order.currency_id.name == "VND"
+assert len(order.lines) == 1 and order.lines.product_id.default_code == "UTH-RICE-01"
+assert Decimal(str(order.amount_total)) == Decimal("35000") and Decimal(str(order.amount_paid)) == Decimal("35000")
+print("KAN147_REGRESSION_OK 20 SKU and one synthetic VND sale")
