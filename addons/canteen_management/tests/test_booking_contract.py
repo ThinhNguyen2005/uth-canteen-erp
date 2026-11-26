@@ -31,6 +31,8 @@ class TestBookingContract(TransactionCase):
         self.assertEqual(self.slot.booked_count, 1)
         with self.assertRaises(UserError):
             booking.action_confirm_booking()
+        self.assertEqual(booking.state, "confirmed")
+        self.assertEqual(self.slot.booked_count, 1)
         booking.action_mark_booking_served()
         with self.assertRaises(UserError):
             booking.action_mark_booking_served()
@@ -50,6 +52,7 @@ class TestBookingContract(TransactionCase):
         booking.action_cancel_booking()
         with self.assertRaises(UserError):
             booking.action_cancel_booking()
+        self.assertEqual(booking.state, "cancelled")
         self.assertEqual(self.slot.booked_count, 0)
         self._booking(quantity=3)
         self.assertEqual(self.slot.booked_count, 3)
