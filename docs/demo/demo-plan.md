@@ -13,3 +13,6 @@ PENDING DEMO. Dependency ERP-12/23/34/46 và ERP-54–57 cần xác nhận trên
 | 25–26 | Reporting / TV1 | Presenter | Báo cáo và tổng kết theo kết quả đã kiểm tra | Bỏ bước chưa được xác minh và ghi known issue |
 
 Actual và duration từng bước: chưa chạy. Phân công trên là đề xuất, chờ nhóm xác nhận. Không khẳng định đồng bộ tự động.
+## Kịch bản bổ sung sau PR #38–40
+
+Giới thiệu student profile sau khi quyền trường được duyệt. So sánh phiếu thường confirmed với draft nội bộ của Manager và kiểm tra booked_count trước/sau. Minh họa quantity 1–3, thử 4 trên dữ liệu demo, Manager confirm, Cashier serve, rồi owner hủy một phiếu confirmed khác ở mốc cho phép. Kiểm tra ca full mở lại khi policy cho phép. Chuẩn bị trường hợp dưới cutoff 30 phút để minh họa từ chối. Các bước liên quan quyền ghi và capacity cạnh tranh chờ ERP-42/43 và dry run.
