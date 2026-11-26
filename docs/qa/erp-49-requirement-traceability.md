@@ -12,3 +12,5 @@
 | ERP-55/56 | ERP-55: TC-22–31 và SLOT-45–48/50; ERP-56: TC-01–21, TC-33–38, TC-40–43 và SLOT-49 | UI/security và automated/concurrency; thực thi chờ tích hợp |
 
 Chỉ là mapping ứng viên; không suy ra acceptance criteria chưa cung cấp.
+
+ERP49-TC-51/52: quantity 3/4, PR #38 và ERP-50/56. TC-15–17: repeated actions, PR #40.
