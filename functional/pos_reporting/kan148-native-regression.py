@@ -13,4 +13,7 @@ for session_id, adjustment, counted in [(3, -1000, 99000), (4, 1000, 101000), (5
     statement = s.bank_statement_id
     assert statement and Decimal(str(statement.balance_end_real)) == Decimal(counted)
     assert any(Decimal(str(line.amount)) == Decimal(adjustment) for line in statement.line_ids)
-print("KAN148_REGRESSION_OK 5 closed sessions, 30 completed orders and 3 recorded cash adjustments")
+assert env["pos.session"].browse(6).state == "closed"
+assert env["pos.order"].browse(33).state == "done" and env["pos.order"].browse(34).state == "cancel"
+assert env["pos.order"].browse(36).state == "cancel" and not env["pos.order"].browse(36).payment_ids
+print("KAN148_REGRESSION_OK closed sessions, adjustments, refund and cancelled drafts")
