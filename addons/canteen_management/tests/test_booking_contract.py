@@ -57,3 +57,42 @@ class TestBookingContract(TransactionCase):
         self._booking(quantity=3)
         self.assertEqual(self.slot.booked_count, 3)
         self.assertEqual(self.slot.state, "full")
+
+    def test_safe_booking_capacity_and_rollback(self):
+        booking_model = self.env["canteen.meal.booking"]
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            booking_model.create_booking_safe(self.partner.id, self.slot.id, quantity=4)
+
+        rollback = RuntimeError("Roll back the test reservation")
+        with self.assertRaisesRegex(RuntimeError, str(rollback)), self.env.cr.savepoint():
+            booking_model.create_booking_safe(self.partner.id, self.slot.id, quantity=3)
+            self.assertEqual(self.slot.booked_count, 3)
+            self.assertEqual(self.slot.state, "full")
+            raise rollback
+
+        self.assertEqual(self.slot.booked_count, 0)
+        self.assertEqual(self.slot.state, "open")
+        self.assertFalse(booking_model.search_count([("slot_id", "=", self.slot.id)]))
+        booking = booking_model.create_booking_safe(self.partner.id, self.slot.id, quantity=3)
+        self.assertEqual(booking.state, "confirmed")
+        self.assertEqual(self.slot.booked_count, 3)
+        self.assertEqual(self.slot.state, "full")
+
+    def test_confirmed_booking_fields_remain_unchanged(self):
+        booking = self._booking(quantity=1)
+        other_partner = self.env["res.partner"].create({"name": "Another booking partner"})
+        other_slot = self.slot.copy({"name": "Another booking slot"})
+        for field, value in (
+            ("quantity", 2),
+            ("partner_id", other_partner.id),
+            ("slot_id", other_slot.id),
+        ):
+            with self.subTest(field=field):
+                with self.assertRaises(ValidationError), self.env.cr.savepoint():
+                    booking.write({field: value})
+        self.assertEqual(booking.state, "confirmed")
+        self.assertEqual(booking.quantity, 1)
+        self.assertEqual(booking.partner_id, self.partner)
+        self.assertEqual(booking.slot_id, self.slot)
+        self.assertEqual(self.slot.booked_count, 1)
+        self.assertEqual(other_slot.booked_count, 0)
