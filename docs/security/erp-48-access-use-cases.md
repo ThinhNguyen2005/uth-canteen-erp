@@ -1,4 +1,4 @@
-﻿# ERP-48 — Allow/Deny use cases (NOT RUN)
+# ERP-48 — Allow/Deny use cases (NOT RUN)
 
 Mọi expected dưới đây là PROPOSED/PENDING REVIEW; kiểm thử bằng user thường, xác minh record không thay đổi sau deny.
 
@@ -18,3 +18,7 @@ Mọi expected dưới đây là PROPOSED/PENDING REVIEW; kiểm thử bằng us
 | SEC-12 | User nhiều group | So sánh hợp ACL, group rules và global rules với ma trận đã chốt |
 | SEC-13 | Cashier đọc booking ngoài ca/phạm vi | Deny nếu policy quy định giới hạn; cần chốt |
 | SEC-14 | User thay đổi owner qua nested create/write | Deny hoặc ép owner; cần chốt |
+
+| SEC-15 | Owner hủy confirmed ở mốc 31/30/29 phút | 31 và 30 được phép; 29 từ chối theo PR #40 |
+| SEC-16 | Manager hủy draft nội bộ hoặc confirmed quá cutoff | Action cho phép theo PR #40; draft không hoàn suất |
+| SEC-17 | Booking User sửa quantity/slot/partner/state sau confirmed | Deny theo contract; regression chờ guard ERP-42 |

@@ -38,3 +38,9 @@ ACL cộng dồn theo mọi group, không thu hồi quyền cấp bởi group kh
 | Admin nghiệp vụ / không nhóm | Admin chờ chốt; không nhóm đề xuất từ chối | Cùng điều kiện | Không suy ra từ quyền Settings | Chờ duyệt |
 
 ERP-53 cần kiểm tra domain và operation trên ir.access của runtime. Visibility menu và field chỉ là một phần của thiết kế. Backend guard cho create/write state của TV4 còn mở.
+
+## Quy tắc workflow đã đối chiếu PR #40
+
+- Manager confirm draft, cancel draft/confirmed (có ngoại lệ thời hạn) và serve confirmed; Cashier chỉ serve confirmed trong phạm vi action nghiệp vụ.
+- Booking User chỉ hủy confirmed của chính mình (partner_id = user.partner_id) khi còn ít nhất 30 phút. Kiểm tra mốc 31/30/29 phút. Không sửa trực tiếp quantity, slot_id, partner_id, state sau confirmed; không unlink.
+- Dùng bốn nhóm canteen hiện có, không thêm Canteen Admin. Kitchen read, toàn bộ CRUD, menu và rules còn Pending Review; ERP-42 phải bảo vệ ORM/RPC và owner khi create.
