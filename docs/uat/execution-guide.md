@@ -12,4 +12,7 @@ Trước buổi UAT, điều phối viên ghi SHA đã tích hợp, phiên bản
 | Bug ID | Fix SHA | Scope | Actual | Status | Evidence |
 |---|---|---|---|---|---|
 | TV5-01 | Chưa có revision tích hợp | Full addon install/upgrade | Chưa chạy sau patch manifest chính thức | Pending | Fixture có log riêng |
-| TV5-02 | Chưa có fix TV4 | Slot state/capacity | Chưa retest sau fix | Pending | PR #25 |
+| TV5-02 | ed18146 | Slot state/capacity | System ORM fixture từ chối open với capacity 0 | PASS fixture | tv5-backend-alignment-install.log |
+## Workflow theo PR #40
+
+Kiểm tra phiếu thường tạo confirmed với 1–3 suất và Manager tạo draft nội bộ không giữ suất. Manager confirm hoặc cancel draft. Cashier giao phiếu confirmed; sau served/cancelled không chuyển tiếp. Dùng hai tài khoản Booking User để kiểm tra phạm vi own-record. Chuẩn bị ba ca có cutoff hủy 31, 30, 29 phút; 31/30 hợp lệ và 29 bị từ chối nếu các điều kiện khác đủ. Manager được xử lý ngoại lệ. Chờ ERP-42/43 trước Human UAT các ca ghi trực tiếp và cạnh tranh suất cuối.
