@@ -86,6 +86,10 @@ class CanteenMealSlot(models.Model):
         "CHECK(booked_count <= capacity)",
         "Số suất đã đặt không được vượt quá sức chứa tối đa!",
     )
+    _check_open_capacity_positive = models.Constraint(
+        "CHECK(state != 'open' OR capacity > 0)",
+        "Ca ăn đang mở đặt chỗ phải có sức chứa lớn hơn 0!",
+    )
 
     def _compute_booked_count(self):
         # shortcut: booking_ids One2many and @api.depends("booking_ids.state", "booking_ids.quantity")
@@ -119,7 +123,7 @@ class CanteenMealSlot(models.Model):
                     _("Thời gian bắt đầu ca ăn phải trước thời gian kết thúc!")
                 )
 
-    @api.constrains("capacity", "booked_count")
+    @api.constrains("state", "capacity", "booked_count")
     def _check_capacity_values(self):
         for slot in self:
             if slot.capacity < 0:
@@ -129,6 +133,10 @@ class CanteenMealSlot(models.Model):
             if slot.booked_count > slot.capacity:
                 raise ValidationError(
                     _("Số suất đã đặt không được vượt quá sức chứa tối đa!")
+                )
+            if slot.state == "open" and slot.capacity <= 0:
+                raise ValidationError(
+                    _("Ca ăn đang mở đặt chỗ phải có sức chứa lớn hơn 0!")
                 )
 
     def _check_manager_access(self):
