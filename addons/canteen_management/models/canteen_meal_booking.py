@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
+from datetime import timedelta
 import uuid
 
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 
 class CanteenMealBooking(models.Model):
@@ -11,6 +12,8 @@ class CanteenMealBooking(models.Model):
     _inherit = ["mail.thread"]
     _rec_name = "booking_ref"
     _order = "booked_at desc, id desc"
+
+    CANCEL_DEADLINE_MINUTES = 30
 
     booking_ref = fields.Char(
         string="Mã phiếu đặt",
@@ -196,3 +199,123 @@ class CanteenMealBooking(models.Model):
         res = super().unlink()
         affected_slots.sudo()._sync_capacity_state()
         return res
+
+    def _is_manager(self):
+        return self.env.su or self.env.user.has_group(
+            "canteen_management.group_canteen_manager"
+        )
+
+    def _is_cashier(self):
+        return self.env.su or self.env.user.has_group(
+            "canteen_management.group_canteen_cashier"
+        )
+
+    def _check_cancel_permission(self, booking):
+        if self._is_manager():
+            return
+        is_owner = (
+            self.env.user.has_group("canteen_management.group_canteen_user")
+            and booking.partner_id == self.env.user.partner_id
+        )
+        if not is_owner:
+            raise AccessError(
+                _("Bạn chỉ được phép hủy phiếu đặt suất của chính mình!")
+            )
+        if booking.state == "draft":
+            raise AccessError(
+                _("Chỉ Quản lý Căn tin mới có quyền hủy phiếu nháp nội bộ!")
+            )
+
+    def action_confirm_booking(self):
+        if not self._is_manager():
+            raise AccessError(
+                _("Chỉ Quản lý Căn tin mới có quyền xác nhận phiếu nháp!")
+            )
+        for booking in self:
+            if booking.state == "confirmed":
+                raise UserError(_("Phiếu đặt suất đã được xác nhận trước đó!"))
+            if booking.state != "draft":
+                raise UserError(
+                    _("Chỉ có thể xác nhận phiếu đang ở trạng thái Nháp!")
+                )
+
+            slot = booking.slot_id.sudo()
+            self._validate_slot_accepts_booking(slot)
+            slot._compute_booked_count()
+            if slot.booked_count + booking.quantity > slot.capacity:
+                remaining = max(slot.capacity - slot.booked_count, 0)
+                raise UserError(
+                    _("Ca ăn không còn đủ suất trống! Hiện chỉ còn %s suất.")
+                    % remaining
+                )
+
+            booking.with_context(canteen_allow_state_write=True).sudo().write(
+                {"state": "confirmed"}
+            )
+        return True
+
+    def action_cancel_booking(self):
+        now = fields.Datetime.now()
+        is_manager = self._is_manager()
+        for booking in self:
+            self._check_cancel_permission(booking)
+            if booking.state == "cancelled":
+                raise UserError(_("Phiếu đặt suất đã được hủy trước đó!"))
+            if booking.state == "served":
+                raise UserError(_("Không thể hủy phiếu đã nhận phần ăn!"))
+            if booking.state not in ("draft", "confirmed"):
+                raise UserError(_("Trạng thái phiếu hiện tại không thể hủy!"))
+
+            if booking.state == "confirmed" and not is_manager:
+                deadline = booking.slot_id.start_at - timedelta(
+                    minutes=self.CANCEL_DEADLINE_MINUTES
+                )
+                if now > deadline:
+                    raise UserError(
+                        _("Chỉ được hủy phiếu trước giờ bắt đầu ca ít nhất 30 phút!")
+                    )
+
+            booking.with_context(canteen_allow_state_write=True).sudo().write(
+                {"state": "cancelled"}
+            )
+        return True
+
+    def action_mark_booking_served(self):
+        if not self._is_cashier():
+            raise AccessError(
+                _(
+                    "Chỉ Thu ngân / Phục vụ hoặc Quản lý mới có quyền check-in giao suất!"
+                )
+            )
+        for booking in self:
+            if booking.state == "served":
+                raise UserError(
+                    _(
+                        "Phiếu đặt suất đã được phục vụ trước đó, không thể nhận lần hai!"
+                    )
+                )
+            if booking.state == "cancelled":
+                raise UserError(_("Không thể phục vụ phiếu đã bị hủy!"))
+            if booking.state != "confirmed":
+                raise UserError(
+                    _("Chỉ có thể phục vụ phiếu đang ở trạng thái Đã xác nhận!")
+                )
+
+            slot = booking.slot_id.sudo()
+            if not slot.active or slot.state not in ("open", "full"):
+                raise UserError(_("Ca ăn hiện không ở trạng thái sẵn sàng phục vụ!"))
+
+            booking.with_context(canteen_allow_state_write=True).sudo().write(
+                {"state": "served"}
+            )
+        return True
+
+    # Aliases matching Jira ERP-41 names; canonical contract names (KAN-158) are above.
+    def action_confirm(self):
+        return self.action_confirm_booking()
+
+    def action_cancel(self):
+        return self.action_cancel_booking()
+
+    def action_serve(self):
+        return self.action_mark_booking_served()
