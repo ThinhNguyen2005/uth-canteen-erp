@@ -30,6 +30,10 @@ def run_race(registry, mode):
         assert (slot.booked_count, slot.state) == (9, "open")
         slot_id = slot.id
         partner_ids = partners[3:].ids
+        cancel_id = None
+        if mode == "cancel":
+            cancel_id = bookings.create_booking_safe(partner_ids[0], slot_id).id
+            assert (slot.booked_count, slot.state) == (10, "full")
         draft_ids = bookings.create([
             {"partner_id": partner_id, "slot_id": slot_id, "state": "draft"}
             for partner_id in partner_ids
@@ -45,8 +49,10 @@ def run_race(registry, mode):
         model = worker_env["canteen.meal.booking"]
         if mode == "create":
             model.create_booking_safe(partner_ids[index], slot_id, quantity=1)
-        else:
+        elif mode == "confirm":
             model.browse(draft_ids[index]).action_confirm_booking()
+        else:
+            model.browse(cancel_id).action_cancel_booking()
 
     def worker(index):
         retries = 0
@@ -76,7 +82,7 @@ def run_race(registry, mode):
                     cursor.rollback()
                     if index == 0:
                         raise
-                    return "capacity rejected", retries
+                    return "rejected", retries
         raise AssertionError("Contention retry did not complete")
 
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -99,13 +105,21 @@ def run_race(registry, mode):
             release_winner.set()
         assert winner.result(timeout=10) == ("committed", 0)
         outcome, retries = loser.result(timeout=10)
-        assert outcome == "capacity rejected", (outcome, retries)
+        assert outcome == "rejected", (outcome, retries)
 
     with registry.cursor() as cursor:
         verifier = api.Environment(cursor, SUPERUSER_ID, {})
         slot = verifier["canteen.meal.slot"].browse(slot_id)
         records = verifier["canteen.meal.booking"].search([("slot_id", "=", slot_id)])
         confirmed = records.filtered(lambda record: record.state == "confirmed")
+        if mode == "cancel":
+            cancelled = records.filtered(lambda record: record.state == "cancelled")
+            assert (slot.capacity, slot.booked_count, slot.state) == (10, 9, "open")
+            assert len(confirmed) == 3 and sum(confirmed.mapped("quantity")) == 9
+            assert cancelled.ids == [cancel_id] and cancelled.quantity == 1
+            print(f"PASS cancel: two PostgreSQL backends, observed lock wait, one commit, "
+                  f"one rejection, serialization retries={retries}, count=9, state=open")
+            return
         assert (slot.capacity, slot.booked_count, slot.state) == (10, 10, "full")
         assert len(confirmed) == 4 and sum(confirmed.mapped("quantity")) == 10
         assert confirmed.mapped("partner_id").ids.count(partner_ids[0]) == 1
@@ -117,5 +131,5 @@ def run_race(registry, mode):
 
 if not env.cr.dbname.startswith("uth_erp56_"):
     raise RuntimeError("Use a disposable uth_erp56_ database")
-for scenario in ("create", "confirm"):
+for scenario in ("create", "confirm", "cancel"):
     run_race(env.registry, scenario)

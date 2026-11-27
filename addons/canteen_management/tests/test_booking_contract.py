@@ -40,7 +40,7 @@ class TestBookingContract(TransactionCase):
         self.assertEqual(self.slot.booked_count, 1)
 
     def test_quantity_duplicate_cancel_and_rebook(self):
-        for quantity in (0, 4):
+        for quantity in (0, 4, True, "1", 1.5):
             with self.subTest(quantity=quantity):
                 with self.assertRaises((ValidationError, IntegrityError)), self.env.cr.savepoint():
                     self._booking(quantity=quantity)
@@ -96,3 +96,31 @@ class TestBookingContract(TransactionCase):
         self.assertEqual(booking.slot_id, self.slot)
         self.assertEqual(self.slot.booked_count, 1)
         self.assertEqual(other_slot.booked_count, 0)
+
+    def test_duplicate_batch_preserves_booking_and_capacity(self):
+        model = self.env["canteen.meal.booking"]
+        values = {"partner_id": self.partner.id, "slot_id": self.slot.id, "quantity": 1}
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            model.create([values, values])
+        self.assertFalse(model.search_count([("slot_id", "=", self.slot.id)]))
+        drafts = model.create([dict(values, state="draft"), dict(values, state="draft")])
+        with self.assertRaises(UserError), self.env.cr.savepoint():
+            drafts.action_confirm_booking()
+        self.assertEqual(drafts.mapped("state"), ["draft", "draft"])
+        self.assertEqual(self.slot.booked_count, 0)
+        self.assertEqual(self.slot.state, "open")
+
+    def test_cancelled_booking_copy_has_new_identity(self):
+        booking = self._booking(access_token="  ")
+        self.assertTrue(booking.access_token.strip())
+        with self.assertRaises(UserError), self.env.cr.savepoint():
+            self.slot.write({"active": False})
+        self.assertTrue(self.slot.active)
+        self.assertEqual(self.slot.booked_count, 1)
+        booking.action_cancel_booking()
+        duplicate = booking.copy()
+        self.assertEqual(booking.state, "cancelled")
+        self.assertEqual(duplicate.state, "confirmed")
+        self.assertNotEqual(duplicate.booking_ref, booking.booking_ref)
+        self.assertNotEqual(duplicate.access_token, booking.access_token)
+        self.assertEqual(self.slot.booked_count, 1)
