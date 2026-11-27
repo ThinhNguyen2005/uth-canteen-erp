@@ -28,4 +28,6 @@ See `reconciliation.csv`. Confirmed P00001–P00008 total: 12,250,000 VND. P0000
 - Product template IDs 73–77 have no verified External IDs. TV1 must map or create these records before importing related PO lines.
 - Some proposed raw-material demo records differ from actual Odoo product names, brands or UoMs. Do not automatically map them.
 - Standard costs shown in `opening_inventory.csv` are the source database's current company cost values; they are not supplier quotations or PO unit prices.
+- **REC-14 – REVIEW_REQUIRED:** the source standard costs materially differ from confirmed PO unit prices: ST25 240,000 vs 27,000 VND/kg; fresh pho noodles 180,000 vs 22,000 VND/kg; condensed milk 11,200,000 vs 1,180,000 VND/Unit. Do not use these standard costs for opening inventory valuation or integration valuation until Finance/Accounting investigates and confirms the correct costs. The source snapshot values have not been modified.
+- Supplier names in `purchase_orders.csv` are aligned with `suppliers.csv`; An Sáng uses the canonical name `Công ty Thực phẩm An Sáng UTH` and VAT `DEMO-VAT-0001`.
 - This package is a handoff dataset for integration testing, not an instruction to blindly import all historical records into a live database.
