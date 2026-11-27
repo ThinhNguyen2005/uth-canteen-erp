@@ -61,9 +61,11 @@ Các kiểm thử có rủi ro được thực hiện trên database sandbox đ�
 - Tồn sau giao dịch: -1 kg.
 - Reserved sau giao dịch: 0 kg.
 
-**Kết luận:** Odoo cho phép xác nhận giao hàng dù tồn kho nội bộ không đủ, dẫn đến tồn âm -1 kg.
+**Kết luận:** Odoo Community 20.0 mặc định cho phép xác nhận giao hàng khi tồn kho nội bộ không đủ, dẫn đến tồn âm -1 kg. Đây là hành vi mặc định của Odoo và được TV1 chấp thuận cho phạm vi MVP.
 
-Đây là kết quả quan sát thực tế trên sandbox. ERP-21 hiện chưa xác định rõ chính sách bắt buộc chặn tồn âm, do đó cần TV1/nhóm dự án xác nhận yêu cầu nghiệp vụ trước khi kết luận đây là lỗi cần sửa.
+**Chính sách xử lý trong MVP:** Ghi nhận cảnh báo khi phát hiện chênh lệch hoặc tồn kho âm; đối soát và điều chỉnh tồn kho vào cuối ngày theo quy trình kiểm kê, tương tự ca T01 của ERP-20. Không yêu cầu thay đổi code hoặc chặn xác nhận giao hàng trong phạm vi MVP.
+
+**Ngoài phạm vi MVP:** Chặn tồn âm bằng giải pháp bổ sung như addon `stock_no_negative` là hạng mục nâng cao, có thể xem xét ở giai đoạn sau. Không phát sinh yêu cầu sửa code trong ERP-22.
 
 **Bằng chứng:**
 - `evidence/ERP-22/erp22_t03_delivery_done.png`
@@ -132,14 +134,15 @@ Các chứng từ dưới đây được kiểm tra trong dữ liệu sandbox sa
 - Nhận hàng đầy đủ và một phần: đã xác minh chứng từ kế thừa từ ERP-19.
 - Chưa thực hiện lại giao dịch điều chỉnh tồn và tạo mới quy tắc bổ sung hàng trong ERP-22.
 
-## 4. Vấn đề cần phối hợp
+## 4. Chính sách tồn âm đã được xác nhận
 
-Đề nghị TV1/nhóm dự án xác nhận:
-1. Hệ thống có bắt buộc chặn xác nhận giao hàng khi tồn kho nội bộ không đủ hay không?
-2. Nếu có, cần thống nhất cấu hình hoặc giải pháp kỹ thuật để ngăn tồn kho âm.
+TV1 xác nhận chính sách cho MVP:
+1. Chấp nhận hành vi mặc định của Odoo Community 20.0, cho phép phát sinh tồn kho âm.
+2. Ghi nhận cảnh báo chênh lệch tồn và xử lý bằng điều chỉnh tồn kho cuối ngày theo quy trình kiểm kê.
+3. Chặn tồn âm bằng addon như `stock_no_negative` là hạng mục nâng cao, để xem xét sau MVP. Không yêu cầu sửa code trong ERP-22.
 
 ## 5. Trạng thái bàn giao
 
 **Testing Completed – Pending Peer Review**
 
-Báo cáo ghi nhận riêng kết quả kiểm thử thực tế trong ERP-22 và dữ liệu lịch sử được kế thừa từ ERP-19/ERP-20. Chưa kết luận toàn bộ kiểm thử hồi quy đã PASS cho đến khi các ca còn thiếu được chạy lại và vấn đề chính sách tồn âm được xác nhận.
+Báo cáo ghi nhận riêng kết quả kiểm thử thực tế trong ERP-22 và dữ liệu lịch sử được kế thừa từ ERP-19/ERP-20. Chính sách tồn âm cho MVP đã được TV1 xác nhận. ERP-22 đang chờ peer review sau khi hoàn tất chỉnh sửa encoding và cập nhật kết luận.

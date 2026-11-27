@@ -1,4 +1,4 @@
-﻿ERP-22 - T03 NEGATIVE STOCK TEST
+ERP-22 - T03 NEGATIVE STOCK TEST
 Database: uth_canteen_erp22_sandbox
 Picking: WH/OUT/00002
 Product: Trà lài Tân Cương ướp hoa tươi (product_id 29)
