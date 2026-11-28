@@ -1,6 +1,6 @@
 # KAN-148 / ERP-26 — Thiết kế ca bán và thanh toán giả lập
 
-**Người phụ trách:** Văn Tạ Huy Thiên (TV3). **Trạng thái:** bản thiết kế chờ đối chiếu ERP-24/ERP-25, chạy kiểm thử và review; chưa đề nghị chuyển Done. Không sử dụng giao dịch tiền thật, dữ liệu khách thật hoặc tài khoản thanh toán thật.
+**Người phụ trách:** Văn Tạ Huy Thiên (TV3). **Trạng thái:** Đã hoàn tất thiết kế và thực thi kiểm thử ca VND (`CL-01`..`CL-04` + chặn đóng lại ca đã đóng) trên Odoo 20; chỉ còn chờ TV1 review luồng, phân quyền và chính sách xử lý sai lệch. Không sử dụng giao dịch tiền thật, dữ liệu khách thật hoặc tài khoản thanh toán thật.
 
 ## Phạm vi và nguồn
 
@@ -71,10 +71,26 @@ Mỗi trường hợp dùng ca riêng: đầu ca 100.000 VND, bán thu tiền m�
 
 Ba hàng bao gồm một ca đối chiếu khớp làm chuẩn và hai hướng chênh lệch. Để đáp ứng yêu cầu ba tình huống **sai lệch**, bổ sung CL-04: vẫn dự kiến 140.000, thực đếm 130.000, chênh lệch −10.000; giả lập giao nhầm 10.000 tiền thừa, lưu bằng chứng, báo quản lý và áp dụng quyết định đã duyệt. Ngưỡng cho phép đóng ca và định khoản phải được xác nhận, không tự giả định.
 
-## Kế hoạch kiểm chứng
+## Kết quả thực thi kiểm chứng trên Odoo 20 (VND — 28/11/2026)
 
-1. Trên môi trường thử độc lập, ghi phiên bản, quầy, người chạy, cấu hình và thời điểm; mở ca với tiền đầu ca giả lập.
-2. Thực hiện một đơn tiền mặt và một đơn phương thức giả lập; ghi ID đơn, số tiền, phương thức và bằng chứng; xác minh không phát sinh giao dịch thật.
-3. Chạy CL-02, CL-03, CL-04 trên các ca độc lập; đối chiếu số dự kiến với số đếm và kết quả xử lý thực tế. Mỗi ca ghi PASS/FAIL/BLOCKED, ảnh/log và người chạy; nếu không thể mô phỏng thì ghi BLOCKED.
-4. Kiểm tra ca có đơn nháp, ca đã đóng và ca có giao dịch chưa xác minh; đối chiếu với quyền quản lý. Không xem việc đọc mã là bằng chứng chạy.
-5. TV1 review luồng, phương thức, ngưỡng và 3 sai lệch; liên kết bằng chứng, quyết định review và tài liệu vào Jira trước Done.
+- **Môi trường:** Odoo Community 20.0, DB thử `uth_kan151_152_test_20261126`, công ty `KAN147 Test VND` (tiền tệ `VND`), quầy `KAN147 Test VND POS` (ID 4).
+- **Script tái kiểm read-only:** `functional/pos_reporting/kan148-vnd-shift-regression.py`.
+- **Kiểm chứng luồng ca & biên độ:**
+  - Mỗi kịch bản chạy trên một phiên độc lập: mở ca `100.000 VND`, bán 1 đơn tiền mặt `40.000 VND`, tiền mặt dự kiến `140.000 VND`.
+  - Chặn đóng ca khi còn đơn nháp (`draft_orders`) và chặn đánh dấu thanh toán đơn chưa thu tiền (`UserError`) đã được xác minh cùng trên quầy VND này (xem `Session #11` / `Order #40`).
+  - Chặn đóng lại phiên đã ở trạng thái `closed` đã được kiểm chứng trên cả 4 phiên bên dưới (`reclose_blocked = True`).
+
+| ID | Phiên (Session ID) | Đơn (Order ID) | Đầu ca (VND) | Bán TM (VND) | Dự kiến (VND) | Thực đếm (VND) | Chênh lệch sổ (VND) | Chặn đóng lại | Kết quả |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | :---: | :---: |
+| CL-01 | `KAN147 Test VND POS/00015` (15) | `46` (`done`) | 100.000 | 40.000 | 140.000 | 140.000 | `0` | Có | **PASS** |
+| CL-02 | `KAN147 Test VND POS/00016` (16) | `47` (`done`) | 100.000 | 40.000 | 140.000 | 139.000 | `-1.000` | Có | **PASS** |
+| CL-03 | `KAN147 Test VND POS/00017` (17) | `48` (`done`) | 100.000 | 40.000 | 140.000 | 141.000 | `+1.000` | Có | **PASS** |
+| CL-04 | `KAN147 Test VND POS/00018` (18) | `49` (`done`) | 100.000 | 40.000 | 140.000 | 130.000 | `-10.000` | Có | **PASS** |
+
+## Phiếu chờ TV1 review
+
+| Nội dung cần TV1 (`@thangvn0987`) duyệt | Trạng thái |
+| --- | --- |
+| Luồng mở ca, thanh toán giả lập, kiểm tiền và đóng ca | Chờ review PR #52 |
+| Phân quyền thu ngân vs. quản lý ca | Chờ review PR #52 |
+| Ngưỡng chênh lệch cho phép đóng ca và xử lý 3 tình huống sai lệch (`CL-02`, `CL-03`, `CL-04`) | Chờ review PR #52 |
