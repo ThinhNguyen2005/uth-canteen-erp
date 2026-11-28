@@ -9,6 +9,13 @@ class CanteenMealSlot(models.Model):
     _inherit = ["mail.thread"]
     _order = "start_at, id"
 
+    ALLOWED_STATE_TRANSITIONS = {
+        "draft": {"open", "full"},
+        "open": {"full", "closed"},
+        "full": {"open", "closed"},
+        "closed": set(),
+    }
+
     name = fields.Char(
         string="Tên ca ăn",
         required=True,
@@ -61,6 +68,7 @@ class CanteenMealSlot(models.Model):
         string="Trạng thái",
         required=True,
         default="draft",
+        copy=False,
         index=True,
         tracking=True,
     )
@@ -148,15 +156,63 @@ class CanteenMealSlot(models.Model):
     def _sync_capacity_state(self):
         for slot in self:
             if slot.state == "open" and slot.booked_count >= slot.capacity:
-                slot.state = "full"
+                slot.with_context(canteen_allow_slot_state_write=True).write(
+                    {"state": "full"}
+                )
             elif slot.state == "full" and slot.booked_count < slot.capacity:
-                slot.state = "open"
+                slot.with_context(canteen_allow_slot_state_write=True).write(
+                    {"state": "open"}
+                )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        self._check_manager_access()
+        return super().create(vals_list)
 
     def write(self, vals):
+        if not self.env.context.get("canteen_allow_slot_state_write"):
+            self._check_manager_access()
+        if vals.get("active") is False and self.ids:
+            active_bookings = self.env["canteen.meal.booking"].sudo().search_count(
+                [
+                    ("slot_id", "in", self.ids),
+                    ("state", "=", "confirmed"),
+                ]
+            )
+            if active_bookings:
+                raise UserError(
+                    _(
+                        "Không thể vô hiệu hóa ca ăn đang còn phiếu đặt chỗ đã xác nhận!"
+                    )
+                )
+        if "state" in vals:
+            target_state = vals["state"]
+            allow_direct = self.env.su or self.env.context.get(
+                "canteen_allow_slot_state_write"
+            )
+            for slot in self:
+                if target_state == slot.state:
+                    continue
+                allowed = self.ALLOWED_STATE_TRANSITIONS.get(slot.state, set())
+                if target_state not in allowed:
+                    raise ValidationError(
+                        _("Không thể chuyển trạng thái ca ăn từ '%s' sang '%s'!")
+                        % (slot.state, target_state)
+                    )
+                if not allow_direct:
+                    raise AccessError(
+                        _(
+                            "Không được ghi trực tiếp trạng thái ca ăn; vui lòng dùng hành động Mở ca hoặc Đóng ca!"
+                        )
+                    )
         res = super().write(vals)
         if "capacity" in vals and "state" not in vals:
             self._sync_capacity_state()
         return res
+
+    def unlink(self):
+        self._check_manager_access()
+        return super().unlink()
 
     def action_open_slot(self):
         self._check_manager_access()
@@ -169,7 +225,10 @@ class CanteenMealSlot(models.Model):
                 raise UserError(
                     _("Sức chứa ca ăn phải lớn hơn 0 trước khi mở đặt chỗ!")
                 )
-            slot.state = "full" if slot.booked_count >= slot.capacity else "open"
+            next_state = "full" if slot.booked_count >= slot.capacity else "open"
+            slot.with_context(canteen_allow_slot_state_write=True).write(
+                {"state": next_state}
+            )
         return True
 
     def action_close_slot(self):
@@ -179,5 +238,7 @@ class CanteenMealSlot(models.Model):
                 raise UserError(
                     _("Chỉ có thể đóng ca ăn đang ở trạng thái Mở hoặc Đã hết chỗ!")
                 )
-            slot.state = "closed"
+            slot.with_context(canteen_allow_slot_state_write=True).write(
+                {"state": "closed"}
+            )
         return True
