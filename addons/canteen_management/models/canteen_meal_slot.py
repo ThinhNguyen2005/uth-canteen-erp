@@ -64,6 +64,11 @@ class CanteenMealSlot(models.Model):
         index=True,
         tracking=True,
     )
+    booking_ids = fields.One2many(
+        comodel_name="canteen.meal.booking",
+        inverse_name="slot_id",
+        string="Danh sách đặt chỗ",
+    )
     active = fields.Boolean(
         string="Hiệu lực",
         required=True,
@@ -91,15 +96,8 @@ class CanteenMealSlot(models.Model):
         "Ca ăn đang mở đặt chỗ phải có sức chứa lớn hơn 0!",
     )
 
+    @api.depends("booking_ids.state", "booking_ids.quantity")
     def _compute_booked_count(self):
-        # shortcut: booking_ids One2many and @api.depends("booking_ids.state", "booking_ids.quantity")
-        # are deferred until canteen.meal.booking exists (KAN-161); an unresolved One2many crashes
-        # Odoo registry loading.
-        if "canteen.meal.booking" not in self.env:
-            for slot in self:
-                slot.booked_count = 0
-            return
-
         counts = {}
         if self.ids:
             grouped = self.env["canteen.meal.booking"].sudo()._read_group(
