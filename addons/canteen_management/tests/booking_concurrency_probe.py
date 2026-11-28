@@ -10,6 +10,11 @@ from psycopg2.errors import SerializationFailure
 
 
 def run_race(registry, mode):
+    final_booking_state = {
+        "cancel": "cancelled",
+        "cancel_then_serve": "cancelled",
+        "serve_then_cancel": "served",
+    }.get(mode)
     with registry.cursor() as cursor:
         test_env = api.Environment(cursor, SUPERUSER_ID, {})
         product = test_env["product.product"].create({"name": f"ERP56 {mode} meal"})
@@ -30,9 +35,9 @@ def run_race(registry, mode):
         assert (slot.booked_count, slot.state) == (9, "open")
         slot_id = slot.id
         partner_ids = partners[3:].ids
-        cancel_id = None
-        if mode == "cancel":
-            cancel_id = bookings.create_booking_safe(partner_ids[0], slot_id).id
+        target_id = None
+        if final_booking_state:
+            target_id = bookings.create_booking_safe(partner_ids[0], slot_id).id
             assert (slot.booked_count, slot.state) == (10, "full")
         draft_ids = bookings.create([
             {"partner_id": partner_id, "slot_id": slot_id, "state": "draft"}
@@ -52,7 +57,11 @@ def run_race(registry, mode):
         elif mode == "confirm":
             model.browse(draft_ids[index]).action_confirm_booking()
         else:
-            model.browse(cancel_id).action_cancel_booking()
+            target = model.browse(target_id)
+            if (mode, index) in (("serve_then_cancel", 0), ("cancel_then_serve", 1)):
+                target.action_mark_booking_served()
+            else:
+                target.action_cancel_booking()
 
     def worker(index):
         retries = 0
@@ -112,13 +121,16 @@ def run_race(registry, mode):
         slot = verifier["canteen.meal.slot"].browse(slot_id)
         records = verifier["canteen.meal.booking"].search([("slot_id", "=", slot_id)])
         confirmed = records.filtered(lambda record: record.state == "confirmed")
-        if mode == "cancel":
-            cancelled = records.filtered(lambda record: record.state == "cancelled")
-            assert (slot.capacity, slot.booked_count, slot.state) == (10, 9, "open")
+        if final_booking_state:
+            terminal = records.filtered(lambda record: record.state == final_booking_state)
+            held, slot_state = (9, "open") if final_booking_state == "cancelled" else (10, "full")
+            assert (slot.capacity, slot.booked_count, slot.state) == (10, held, slot_state)
             assert len(confirmed) == 3 and sum(confirmed.mapped("quantity")) == 9
-            assert cancelled.ids == [cancel_id] and cancelled.quantity == 1
-            print(f"PASS cancel: two PostgreSQL backends, observed lock wait, one commit, "
-                  f"one rejection, serialization retries={retries}, count=9, state=open")
+            assert terminal.ids == [target_id] and terminal.quantity == 1
+            assert len(records) == 4
+            print(f"PASS {mode}: two PostgreSQL backends, observed lock wait, one commit, "
+                  f"one rejection, serialization retries={retries}, "
+                  f"booking={final_booking_state}, count={held}, state={slot_state}")
             return
         assert (slot.capacity, slot.booked_count, slot.state) == (10, 10, "full")
         assert len(confirmed) == 4 and sum(confirmed.mapped("quantity")) == 10
@@ -131,5 +143,5 @@ def run_race(registry, mode):
 
 if not env.cr.dbname.startswith("uth_erp56_"):
     raise RuntimeError("Use a disposable uth_erp56_ database")
-for scenario in ("create", "confirm", "cancel"):
+for scenario in ("create", "confirm", "cancel", "cancel_then_serve", "serve_then_cancel"):
     run_race(env.registry, scenario)
