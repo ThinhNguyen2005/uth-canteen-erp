@@ -231,6 +231,7 @@ class CanteenMealBooking(models.Model):
             raise AccessError(
                 _("Chỉ Quản lý Căn tin mới có quyền xác nhận phiếu nháp!")
             )
+        self.check_access("read")
         for booking in self:
             if booking.state == "confirmed":
                 raise UserError(_("Phiếu đặt suất đã được xác nhận trước đó!"))
@@ -255,6 +256,7 @@ class CanteenMealBooking(models.Model):
         return True
 
     def action_cancel_booking(self):
+        self.check_access("read")
         now = fields.Datetime.now()
         is_manager = self._is_manager()
         for booking in self:
@@ -267,7 +269,12 @@ class CanteenMealBooking(models.Model):
                 raise UserError(_("Trạng thái phiếu hiện tại không thể hủy!"))
 
             if booking.state == "confirmed" and not is_manager:
-                deadline = booking.slot_id.start_at - timedelta(
+                slot = booking.slot_id.sudo()
+                if not slot.start_at:
+                    raise UserError(
+                        _("Ca ăn chưa có thời gian bắt đầu hợp lệ để kiểm tra hạn hủy!")
+                    )
+                deadline = slot.start_at - timedelta(
                     minutes=self.CANCEL_DEADLINE_MINUTES
                 )
                 if now > deadline:
@@ -287,6 +294,7 @@ class CanteenMealBooking(models.Model):
                     "Chỉ Thu ngân / Phục vụ hoặc Quản lý mới có quyền check-in giao suất!"
                 )
             )
+        self.check_access("read")
         for booking in self:
             if booking.state == "served":
                 raise UserError(
