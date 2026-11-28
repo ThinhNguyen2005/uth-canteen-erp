@@ -230,9 +230,7 @@ class CanteenMealBooking(models.Model):
         target_slot_id = vals.get("slot_id")
 
         if "state" in vals:
-            allow_direct = self.env.su or self.env.context.get(
-                "canteen_allow_state_write"
-            )
+            allow_direct = self.env.su
             for booking in self:
                 if target_state == booking.state:
                     continue
@@ -363,9 +361,7 @@ class CanteenMealBooking(models.Model):
                     % remaining
                 )
 
-            booking.with_context(canteen_allow_state_write=True).sudo().write(
-                {"state": "confirmed"}
-            )
+            booking.sudo().write({"state": "confirmed"})
         return True
 
     def action_cancel_booking(self):
@@ -395,9 +391,7 @@ class CanteenMealBooking(models.Model):
                         _("Chỉ được hủy phiếu trước giờ bắt đầu ca ít nhất 30 phút!")
                     )
 
-            booking.with_context(canteen_allow_state_write=True).sudo().write(
-                {"state": "cancelled"}
-            )
+            booking.sudo().write({"state": "cancelled"})
         return True
 
     def action_mark_booking_served(self):
@@ -426,9 +420,7 @@ class CanteenMealBooking(models.Model):
             if not slot.active or slot.state not in ("open", "full"):
                 raise UserError(_("Ca ăn hiện không ở trạng thái sẵn sàng phục vụ!"))
 
-            booking.with_context(canteen_allow_state_write=True).sudo().write(
-                {"state": "served"}
-            )
+            booking.sudo().write({"state": "served"})
         return True
 
     # Aliases matching Jira ERP-41 names; canonical contract names (KAN-158) are above.

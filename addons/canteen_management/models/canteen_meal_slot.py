@@ -155,20 +155,14 @@ class CanteenMealSlot(models.Model):
     def _sync_capacity_state(self):
         for slot in self:
             if slot.state == "open" and slot.booked_count >= slot.capacity:
-                slot.with_context(canteen_allow_slot_state_write=True).write(
-                    {"state": "full"}
-                )
+                slot.sudo().write({"state": "full"})
             elif slot.state == "full" and slot.booked_count < slot.capacity:
-                slot.with_context(canteen_allow_slot_state_write=True).write(
-                    {"state": "open"}
-                )
+                slot.sudo().write({"state": "open"})
 
     def write(self, vals):
         if "state" in vals:
             target_state = vals["state"]
-            allow_direct = self.env.su or self.env.context.get(
-                "canteen_allow_slot_state_write"
-            )
+            allow_direct = self.env.su
             for slot in self:
                 if target_state == slot.state:
                     continue
@@ -191,6 +185,7 @@ class CanteenMealSlot(models.Model):
 
     def action_open_slot(self):
         self._check_manager_access()
+        self.check_access("read")
         for slot in self:
             if slot.state != "draft":
                 raise UserError(_("Chỉ có thể mở ca ăn đang ở trạng thái Nháp!"))
@@ -201,19 +196,16 @@ class CanteenMealSlot(models.Model):
                     _("Sức chứa ca ăn phải lớn hơn 0 trước khi mở đặt chỗ!")
                 )
             next_state = "full" if slot.booked_count >= slot.capacity else "open"
-            slot.with_context(canteen_allow_slot_state_write=True).write(
-                {"state": next_state}
-            )
+            slot.sudo().write({"state": next_state})
         return True
 
     def action_close_slot(self):
         self._check_manager_access()
+        self.check_access("read")
         for slot in self:
             if slot.state not in ("open", "full"):
                 raise UserError(
                     _("Chỉ có thể đóng ca ăn đang ở trạng thái Mở hoặc Đã hết chỗ!")
                 )
-            slot.with_context(canteen_allow_slot_state_write=True).write(
-                {"state": "closed"}
-            )
+            slot.sudo().write({"state": "closed"})
         return True
