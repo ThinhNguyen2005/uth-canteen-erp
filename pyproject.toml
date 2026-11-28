@@ -1,0 +1,6 @@
+[project]
+name = "uth-canteen-erp-tools"
+version = "0.1.0"
+description = "Host-side scripts for UTH Canteen ERP"
+requires-python = ">=3.12,<3.13"
+dependencies = []

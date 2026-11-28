@@ -272,13 +272,13 @@ Dự án áp dụng quy trình kiểm thử tự động đa tầng (Multi-tier 
 
 ```bash
 # 1. Chạy Suite Kiểm Thử Tích Hợp Đa Phân Hệ E2E (29 kịch bản)
-python scripts/test_integration_suite.py
+uv run --locked python scripts/test_integration_suite.py
 
 # 2. Chạy Suite Kiểm Toán Đóng Gói Bản Phát Hành MVP (18 kịch bản)
-python scripts/verify_release_mvp.py
+uv run --locked python scripts/verify_release_mvp.py
 
 # 3. Chạy Suite Thẩm Định Toàn Vẹn Bàn Giao Hệ Thống (15 kịch bản)
-python scripts/verify_handover_suite.py
+uv run --locked python scripts/verify_handover_suite.py
 ```
 
 ### Bảng Tổng Hợp Kết Quả Kiểm Thử Toàn Diện:
