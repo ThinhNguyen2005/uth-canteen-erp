@@ -1,0 +1,14 @@
+source_line_key,po_source_key,odoo_po_number,product_source_key,odoo_product_template_id,odoo_product_external_id,product_name,ordered_qty,received_qty,uom,unit_price_vnd,line_subtotal_vnd,receipt_status,mapping_status
+erp23_pol_P00001_01,erp23_po_P00001,P00001,erp23_product_st25,23,__import__.raw_rice_st25,Gạo thơm ST25 Thượng hạng (Bao 25kg),100,100,kg,1000,100000,DONE,EXTERNAL_ID_VERIFIED
+erp23_pol_P00002_01,erp23_po_P00002,P00002,erp23_product_st25,23,__import__.raw_rice_st25,Gạo thơm ST25 Thượng hạng (Bao 25kg),100,100,kg,1000,100000,DONE,EXTERNAL_ID_VERIFIED
+erp23_pol_P00003_01,erp23_po_P00003,P00003,erp23_product_st25,23,__import__.raw_rice_st25,Gạo thơm ST25 Thượng hạng (Bao 25kg),1,1,kg,0,0,DONE,EXTERNAL_ID_VERIFIED
+erp23_pol_P00004_01,erp23_po_P00004,P00004,erp23_product_st25,23,__import__.raw_rice_st25,Gạo thơm ST25 Thượng hạng (Bao 25kg),50,50,kg,27000,1350000,DONE,EXTERNAL_ID_VERIFIED
+erp23_pol_P00004_02,erp23_po_P00004,P00004,erp23_product_pho,27,__import__.raw_pho_noodle,Bánh phở tươi truyền thống trong ngày,30,30,kg,22000,660000,DONE,EXTERNAL_ID_VERIFIED
+erp23_pol_P00005_01,erp23_po_P00005,P00005,erp23_product_condensed_milk,30,__import__.raw_condensed_milk,Sữa đặc có đường Ông Thọ xanh lá (Thùng 48 lon),2,1,Unit,1180000,2360000,PARTIAL_BACKORDER,EXTERNAL_ID_VERIFIED
+erp23_pol_P00006_01,erp23_po_P00006,P00006,erp23_product_vegetable_mix,31,__import__.raw_vegetable_mix,Rau củ hỗn hợp nhặt sẵn Đà Lạt (Cà rốt bắp cải dưa leo),40,0,kg,26000,1040000,ASSIGNED_NOT_RECEIVED,EXTERNAL_ID_VERIFIED
+erp23_pol_P00007_01,erp23_po_P00007,P00007,erp23_product_chicken,73,,Đùi gà tươi góc tư CP,20,0,Unit,52000,1040000,ASSIGNED_NOT_RECEIVED,ODOO_EXTERNAL_ID_NOT_FOUND
+erp23_pol_P00007_02,erp23_po_P00007,P00007,erp23_product_pork_ribs,74,,Sườn non heo Vissan,15,0,Unit,128000,1920000,ASSIGNED_NOT_RECEIVED,ODOO_EXTERNAL_ID_NOT_FOUND
+erp23_pol_P00007_03,erp23_po_P00007,P00007,erp23_product_eggs,75,,Trứng gà Ba Huân (vỉ),10,0,Unit,82000,820000,ASSIGNED_NOT_RECEIVED,ODOO_EXTERNAL_ID_NOT_FOUND
+erp23_pol_P00008_01,erp23_po_P00008,P00008,erp23_product_cooking_oil,76,,Dầu ăn Tường An,3,0,Unit,790000,2370000,ASSIGNED_NOT_RECEIVED,ODOO_EXTERNAL_ID_NOT_FOUND
+erp23_pol_P00008_02,erp23_po_P00008,P00008,erp23_product_jasmine_tea,77,,Trà lài,5,0,Unit,98000,490000,ASSIGNED_NOT_RECEIVED,ODOO_EXTERNAL_ID_NOT_FOUND
+erp23_pol_P00009_01,erp23_po_P00009,P00009,erp23_product_condensed_milk,30,__import__.raw_condensed_milk,Sữa đặc có đường Ông Thọ xanh lá (Thùng 48 lon),8,0,Unit,0,0,DRAFT_NOT_CONFIRMED,EXTERNAL_ID_VERIFIED
