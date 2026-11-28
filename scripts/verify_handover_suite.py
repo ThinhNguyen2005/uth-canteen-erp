@@ -8,7 +8,7 @@ Ngày thực hiện: 23/11/2026
 
 Mục tiêu kiểm định 15 tiêu chí bàn giao chuẩn Zero-Defect:
   1. Kiểm toán README.md: Đầy đủ 11 phần chuẩn hóa, 2 phương án cài đặt, tài khoản internal/customer.
-  2. Kiểm toán slide thuyết trình docs/presentation-slide-deck.md: Cấu trúc Marp, đúng 15 slide, RACI matrix.
+  2. Kiểm toán slide thuyết trình docs/presentation-slide-deck.md: Cấu trúc Marp, >= 15 slide (hiện 16 slide), RACI matrix khớp thực tế.
   3. Kiểm toán biên bản bàn giao docs/handover-checklist.md: Đủ 26 hạng mục, sign-off, khuyến nghị bảo mật.
   4. Kiểm toán sự tồn tại của 100% hồ sơ tài liệu kỹ thuật cốt lõi trong docs/.
   5. Đối soát liên kết tệp chéo (Cross-file markdown links audit).
@@ -32,6 +32,7 @@ import json
 import zipfile
 import subprocess
 import csv
+import unicodedata
 import xml.etree.ElementTree as ET
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -64,6 +65,137 @@ def print_header(title):
     print(f"{CYAN}{BOLD} {title}{RESET}")
     print(f"{CYAN}{BOLD}{'='*80}{RESET}")
 
+# Danh sách ánh xạ Vai trò <-> Họ tên <-> GitHub Handle thực tế (GitHub Collaborators + Jira Epics KAN-118..122)
+REQUIRED_ROLE_BINDINGS = (
+    ("TV1", r"(?<![A-Za-z0-9])TV1(?![A-Za-z0-9])", "Thắng Nguyễn Minh", "thangvn0987"),
+    ("TV2", r"(?<![A-Za-z0-9])TV2(?![A-Za-z0-9])", "Trọng Nghĩa", "TN-Kieran"),
+    ("TV3", r"(?<![A-Za-z0-9])TV3(?![A-Za-z0-9])", "Văn Tạ Huy Thiên", "TaHuyThienVan"),
+    ("TV4", r"(?<![A-Za-z0-9])TV4(?![A-Za-z0-9])", "Dịch Viết Đức", "dichvietduc2005"),
+    ("TV5", r"(?<![A-Za-z0-9])TV5(?![A-Za-z0-9])", "Huỳnh Anh Phú", "AnhPhu2306"),
+    ("Repository Owner", r"Repository\s+Owner", "Nguyễn Hoàng Gia Thịnh", "ThinhNguyen2005"),
+)
+FORBIDDEN_LEGACY_ROSTER = (
+    "Nguyễn Thịnh",
+    "Đoàn Tấn Phúc",
+    "Phan Bá Thìn",
+    "tanphuc2005",
+    "phanthink5",
+    "huthien2005",
+)
+# Regex bắt handle bị gán nhầm nguyenthinhk52005 đứng độc lập (khóa ranh giới domain Jira & email Gmail hợp lệ, cho phép dấu chấm cuối câu)
+FORBIDDEN_STANDALONE_OWNER_ID_RE = re.compile(
+    r"(?<![A-Za-z0-9_.-])nguyenthinhk52005(?!(?:\.atlassian\.net(?!(?:[A-Za-z0-9_-]|\.[A-Za-z0-9]))|@gmail\.com(?!(?:[A-Za-z0-9_-]|\.[A-Za-z0-9]))|[A-Za-z0-9_-]))",
+    re.IGNORECASE,
+)
+# Regex chống hồi quy tên tệp ACL sai chuẩn Odoo (ir.access.csv thay vì ir.model.access.csv)
+FORBIDDEN_WRONG_ACL_FILE_RE = re.compile(
+    r"(?<![A-Za-z0-9_.-])ir\.access\.csv(?![A-Za-z0-9_.-])",
+    re.IGNORECASE,
+)
+
+
+def _normalize_for_forbidden_scan(text):
+    """Chuẩn hóa NFC, loại bỏ ký tự nhấn mạnh Markdown và gộp mọi khoảng trắng để chống vượt qua kiểm tra tên cấm."""
+    nfc = unicodedata.normalize("NFC", text)
+    stripped_md = re.sub(r"[*_`~]+", "", nfc)
+    return re.sub(r"\s+", " ", stripped_md)
+
+
+def _strip_fenced_code_blocks(text):
+    """Loại bỏ các khối fenced code theo chuẩn CommonMark (``` hoặc ~~~, độ dài >= 3, thụt lề 0..3 dấu cách)."""
+    out_lines = []
+    in_fence = False
+    fence_char = ""
+    fence_len = 0
+    open_re = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})")
+    for line in text.splitlines():
+        if not in_fence:
+            m = open_re.match(line)
+            if m:
+                marker = m.group(1)
+                rest = line[m.end():]
+                # Theo CommonMark: dòng mở backtick fence không được chứa dấu ` trong info string
+                if marker[0] == "`" and "`" in rest:
+                    out_lines.append(line)
+                    continue
+                in_fence = True
+                fence_char = marker[0]
+                fence_len = len(marker)
+                continue
+            out_lines.append(line)
+        else:
+            close_re = re.compile(
+                r"^[ ]{0,3}" + re.escape(fence_char) + r"{" + str(fence_len) + r",}[ \t]*$"
+            )
+            if close_re.match(line):
+                in_fence = False
+                fence_char = ""
+                fence_len = 0
+    return "\n".join(out_lines)
+
+
+def check_team_roster_integrity(content, require_handles=True):
+    """
+    Kiểm tra tính nhất quán danh sách thành viên thực tế:
+      1. Xác thực ánh xạ từng dòng: Vai trò (TV1..TV5, Repository Owner) <-> Đúng họ tên <-> Đúng GitHub handle độc lập (exact-case).
+      2. Chuẩn hóa Unicode NFC, kiểm tra ranh giới từ/định danh và triệt tiêu hoàn toàn tên/handle sai lệch cũ, handle nguyenthinhk52005 đứng độc lập và tên tệp ACL sai ir.access.csv.
+    """
+    if not isinstance(content, str) or not content.strip():
+        return False, ["<empty_or_invalid_content>"], [], ["<invalid_input>"]
+
+    nfc_content = unicodedata.normalize("NFC", content.lstrip("\ufeff"))
+    lines = nfc_content.splitlines()
+
+    missing_bindings = []
+    missing_handles = []
+
+    for role_label, role_pattern, canonical_name, canonical_handle in REQUIRED_ROLE_BINDINGS:
+        norm_name = unicodedata.normalize("NFC", canonical_name)
+        role_re = re.compile(role_pattern)
+        name_re = re.compile(r"(?<!\w)" + re.escape(norm_name) + r"(?!\w)")
+        # Handle phải xuất hiện độc lập (chặn URL, email và tên miền dạng handle.domain, nhưng cho phép dấu chấm cuối câu)
+        handle_re = re.compile(
+            r"(?<![A-Za-z0-9_./-])" + re.escape(canonical_handle) + r"(?!(?:[A-Za-z0-9_/@-]|\.[A-Za-z0-9]))"
+        )
+
+        role_name_lines = [ln for ln in lines if role_re.search(ln) and name_re.search(ln)]
+        if not role_name_lines:
+            missing_bindings.append(f"{role_label}:{norm_name}")
+        elif require_handles and not any(handle_re.search(ln) for ln in role_name_lines):
+            missing_handles.append(f"{role_label}:{canonical_handle}")
+
+    normalized_scan = _normalize_for_forbidden_scan(nfc_content)
+    inline_stripped = re.sub(r"[*`~]+", "", nfc_content)
+
+    forbidden_hits = []
+    for legacy in FORBIDDEN_LEGACY_ROSTER:
+        norm_legacy = unicodedata.normalize("NFC", legacy)
+        legacy_re = re.compile(r"(?<!\w)" + re.escape(norm_legacy) + r"(?!\w)", re.IGNORECASE)
+        if legacy_re.search(normalized_scan):
+            forbidden_hits.append(norm_legacy)
+
+    if FORBIDDEN_STANDALONE_OWNER_ID_RE.search(nfc_content) or FORBIDDEN_STANDALONE_OWNER_ID_RE.search(inline_stripped):
+        forbidden_hits.append("nguyenthinhk52005(standalone)")
+
+    if FORBIDDEN_WRONG_ACL_FILE_RE.search(nfc_content) or FORBIDDEN_WRONG_ACL_FILE_RE.search(inline_stripped):
+        forbidden_hits.append("ir.access.csv")
+
+    is_valid = not (missing_bindings or missing_handles or forbidden_hits)
+    return is_valid, missing_bindings, missing_handles, forbidden_hits
+
+
+def count_marp_slides(slide_content):
+    """Đếm số slide Marp thực tế, loại trừ UTF-8 BOM, YAML frontmatter và các dấu --- bên trong fenced code block (CommonMark)."""
+    if not isinstance(slide_content, str) or not slide_content.strip():
+        return 0
+    text = slide_content.lstrip("\ufeff").replace("\r\n", "\n").replace("\r", "\n")
+    # Loại bỏ YAML frontmatter ở đầu tệp (--- ... ---)
+    body = re.sub(r"\A---[ \t]*\n.*?\n---[ \t]*(?:\n|\Z)", "", text, count=1, flags=re.DOTALL)
+    body_no_code = _strip_fenced_code_blocks(body)
+    separators = re.findall(r"(?m)^---[ \t]*$", body_no_code)
+    return len(separators) + 1 if body_no_code.strip() else 0
+
+
 # ==============================================================================
 # PHẦN 1: KIỂM TOÁN TÀI LIỆU BÀN GIAO CỐT LÕI (README, SLIDE, CHECKLIST)
 # ==============================================================================
@@ -75,69 +207,77 @@ def test_new_deliverables():
     readme_path = os.path.join(REPO_ROOT, "README.md")
     if not os.path.exists(readme_path):
         record_test("TC-HO-01", category, "Tệp README.md tồn tại", "FAIL", "Blocker", "Không tìm thấy README.md")
-        return
-
-    with open(readme_path, "r", encoding="utf-8") as f:
-        readme_content = f.read()
-
-    has_quickstart = "Hướng Dẫn Cài Đặt Nhanh" in readme_content
-    has_docker = "docker compose up -d" in readme_content
-    has_restore = "restore_db.ps1" in readme_content and "restore_db.sh" in readme_content
-    has_accounts = "an.nguyen.k21@uth.edu.vn" in readme_content and "kitchen@uth.edu.vn" in readme_content
-    has_options = "Phương án 1 (Khuyến nghị" in readme_content and "Phương án 2 (Tùy chọn" in readme_content
-    has_dataset = "13 Món Ăn" in readme_content or "13 Món ăn" in readme_content
-    has_troubleshoot = "Xử Lý Sự Cố Thường Gặp" in readme_content
-    has_badge_62 = "62%2F62" in readme_content
-
-    if all([has_quickstart, has_docker, has_restore, has_accounts, has_options, has_dataset, has_troubleshoot, has_badge_62]):
-        record_test("TC-HO-01", category, "Toàn vẹn Cẩm nang Tổng thể README.md", "PASS", "Normal", "Đầy đủ 11 phần: Quickstart 2 phương án, Docker, Restore, Tài khoản chuẩn, Dataset, 62/62 Tests badge")
     else:
-        record_test("TC-HO-01", category, "Toàn vẹn Cẩm nang Tổng thể README.md", "FAIL", "Critical", f"Thiếu mục: qs={has_quickstart}, opt={has_options}, acc={has_accounts}, badge={has_badge_62}")
+        with open(readme_path, "r", encoding="utf-8-sig") as f:
+            readme_content = f.read()
+
+        readme_roster_ok, rm_miss_b, rm_miss_h, rm_forb = check_team_roster_integrity(readme_content, require_handles=True)
+        readme_checks = {
+            "quickstart": "Hướng Dẫn Cài Đặt Nhanh" in readme_content,
+            "docker": "docker compose up -d" in readme_content,
+            "restore": "restore_db.ps1" in readme_content and "restore_db.sh" in readme_content,
+            "accounts": "an.nguyen.k21@uth.edu.vn" in readme_content and "kitchen@uth.edu.vn" in readme_content,
+            "options": "Phương án 1 (Khuyến nghị" in readme_content and "Phương án 2 (Tùy chọn" in readme_content,
+            "dataset": "13 Món Ăn" in readme_content or "13 Món ăn" in readme_content,
+            "troubleshoot": "Xử Lý Sự Cố Thường Gặp" in readme_content,
+            "badge_62": "62%2F62" in readme_content,
+            "roster": readme_roster_ok,
+        }
+        failed_readme = [k for k, v in readme_checks.items() if not v]
+
+        if not failed_readme:
+            record_test("TC-HO-01", category, "Toàn vẹn Cẩm nang Tổng thể README.md", "PASS", "Normal", "Đầy đủ 11 phần: Quickstart 2 phương án, Docker, Restore, Tài khoản chuẩn, RACI 5 TV + Owner ánh xạ chuẩn xác, Dataset, 62/62 Tests badge")
+        else:
+            record_test("TC-HO-01", category, "Toàn vẹn Cẩm nang Tổng thể README.md", "FAIL", "Critical", f"Mục lỗi={failed_readme} (miss_bindings={rm_miss_b}, miss_handles={rm_miss_h}, forbidden={rm_forb})")
 
     # TC-HO-02: Kiểm toán docs/presentation-slide-deck.md (Đếm động slide >= 15)
     slide_path = os.path.join(REPO_ROOT, "docs", "presentation-slide-deck.md")
     if not os.path.exists(slide_path):
         record_test("TC-HO-02", category, "Tệp slide thuyết trình tồn tại", "FAIL", "Blocker", "Không tìm thấy slide deck")
-        return
-
-    with open(slide_path, "r", encoding="utf-8") as f:
-        slide_content = f.read()
-
-    has_marp = "marp: true" in slide_content
-    has_theme = "theme: default" in slide_content
-    has_milestones = "Tuần 1:" in slide_content and "Tuần 2:" in slide_content and "Tuần 3:" in slide_content
-    has_raci = "Thắng Nguyễn Minh" in slide_content and "Nguyễn Thịnh" in slide_content
-    has_sec5 = "Kiểm Soát Truy Cập IDOR" in slide_content
-
-    # Đếm số slide thực tế thông qua các dấu phân tách --- (bỏ qua frontmatter)
-    slides_parts = re.split(r'\n---\n', slide_content)
-    # Phần tử đầu tiên là frontmatter, các phần tử sau là từng slide
-    actual_slides_count = len(slides_parts) - 1 if len(slides_parts) > 1 else len(slides_parts)
-
-    if has_marp and has_theme and has_milestones and has_raci and has_sec5 and actual_slides_count >= 15:
-        record_test("TC-HO-02", category, "Toàn vẹn Bộ Slide Thuyết Trình 3 Tuần (Marp Format)", "PASS", "Normal", f"Chuẩn Marp Presentation: {actual_slides_count} slide (>= 15), đủ 3 tuần, RACI 5 thành viên, 5 cơ chế bảo mật")
     else:
-        record_test("TC-HO-02", category, "Toàn vẹn Bộ Slide Thuyết Trình 3 Tuần", "FAIL", "Major", f"Slide count={actual_slides_count} (yêu cầu >= 15), marp={has_marp}, sec5={has_sec5}")
+        with open(slide_path, "r", encoding="utf-8-sig") as f:
+            slide_content = f.read()
+
+        has_raci, sl_miss_b, sl_miss_h, sl_forb = check_team_roster_integrity(slide_content, require_handles=True)
+        actual_slides_count = count_marp_slides(slide_content)
+        slide_checks = {
+            "marp": "marp: true" in slide_content,
+            "theme": "theme: default" in slide_content,
+            "milestones": "Tuần 1:" in slide_content and "Tuần 2:" in slide_content and "Tuần 3:" in slide_content,
+            "raci": has_raci,
+            "sec5": "Kiểm Soát Truy Cập IDOR" in slide_content,
+            "slide_count_ge_15": actual_slides_count >= 15,
+        }
+        failed_slide = [k for k, v in slide_checks.items() if not v]
+
+        if not failed_slide:
+            record_test("TC-HO-02", category, "Toàn vẹn Bộ Slide Thuyết Trình 3 Tuần (Marp Format)", "PASS", "Normal", f"Chuẩn Marp Presentation: {actual_slides_count} slide (>= 15), đủ 3 tuần, RACI 5 thành viên + Owner ánh xạ chuẩn xác, 5 cơ chế bảo mật")
+        else:
+            record_test("TC-HO-02", category, "Toàn vẹn Bộ Slide Thuyết Trình 3 Tuần", "FAIL", "Major", f"Mục lỗi={failed_slide}, slide_count={actual_slides_count} (miss_bindings={sl_miss_b}, miss_handles={sl_miss_h}, forbidden={sl_forb})")
 
     # TC-HO-03: Kiểm toán docs/handover-checklist.md
     checklist_path = os.path.join(REPO_ROOT, "docs", "handover-checklist.md")
     if not os.path.exists(checklist_path):
         record_test("TC-HO-03", category, "Tệp biên bản bàn giao tồn tại", "FAIL", "Blocker", "Không tìm thấy handover checklist")
-        return
-
-    with open(checklist_path, "r", encoding="utf-8") as f:
-        checklist_content = f.read()
-
-    has_parties = "Bên Bàn Giao" in checklist_content and "Bên Tiếp Nhận" in checklist_content
-    has_table = "BẢNG CHECKLIST HẠNG MỤC BÀN GIAO" in checklist_content
-    has_signoff = "KÝ DUYỆT & XÁC NHẬN BÀN GIAO" in checklist_content
-    has_sec = "Khuyến Nghị Bảo Mật Khi Đưa Vào Vận Hành Thực Tế" in checklist_content
-    has_test_rows = "test_integration_suite.py" in checklist_content and "verify_release_mvp.py" in checklist_content and "verify_handover_suite.py" in checklist_content
-
-    if has_parties and has_table and has_signoff and has_sec and has_test_rows:
-        record_test("TC-HO-03", category, "Toàn vẹn Biên Bản Bàn Giao & Checklist Nghiệm Thu", "PASS", "Normal", "Đủ 26 hạng mục bàn giao, bảng checklist tích hợp 3 test suites, sign-off và khuyến nghị bảo mật")
     else:
-        record_test("TC-HO-03", category, "Toàn vẹn Biên Bản Bàn Giao & Checklist", "FAIL", "Major", f"Thiếu mục: test_rows={has_test_rows}")
+        with open(checklist_path, "r", encoding="utf-8-sig") as f:
+            checklist_content = f.read()
+
+        checklist_roster_ok, cl_miss_b, cl_miss_h, cl_forb = check_team_roster_integrity(checklist_content, require_handles=True)
+        checklist_checks = {
+            "parties": "Bên Bàn Giao" in checklist_content and "Bên Tiếp Nhận" in checklist_content,
+            "table": "BẢNG CHECKLIST HẠNG MỤC BÀN GIAO" in checklist_content,
+            "signoff": "KÝ DUYỆT & XÁC NHẬN BÀN GIAO" in checklist_content,
+            "sec": "Khuyến Nghị Bảo Mật Khi Đưa Vào Vận Hành Thực Tế" in checklist_content,
+            "test_rows": "test_integration_suite.py" in checklist_content and "verify_release_mvp.py" in checklist_content and "verify_handover_suite.py" in checklist_content,
+            "roster": checklist_roster_ok,
+        }
+        failed_checklist = [k for k, v in checklist_checks.items() if not v]
+
+        if not failed_checklist:
+            record_test("TC-HO-03", category, "Toàn vẹn Biên Bản Bàn Giao & Checklist Nghiệm Thu", "PASS", "Normal", "Đủ 26 hạng mục bàn giao, danh sách 5 TV + Owner ánh xạ chuẩn xác, bảng checklist tích hợp 3 test suites, sign-off và khuyến nghị bảo mật")
+        else:
+            record_test("TC-HO-03", category, "Toàn vẹn Biên Bản Bàn Giao & Checklist", "FAIL", "Major", f"Mục lỗi={failed_checklist} (miss_bindings={cl_miss_b}, miss_handles={cl_miss_h}, forbidden={cl_forb})")
 
 # ==============================================================================
 # PHẦN 2: KIỂM TOÁN TOÀN BỘ HỒ SƠ TÀI LIỆU KỸ THUẬT & LIÊN KẾT NỘI BỘ
@@ -170,32 +310,43 @@ def test_documentation_suite_and_links():
     else:
         record_test("TC-HO-04", category, "Đầy đủ 10/10 Tài liệu Kỹ thuật Cốt lõi", "FAIL", "Blocker", f"Thiếu: {missing_docs}")
 
-    # TC-HO-05: Kiểm tra liên kết tệp markdown trong README.md (Hỗ trợ cả đường dẫn tương đối và absolute URI)
-    readme_path = os.path.join(REPO_ROOT, "README.md")
-    with open(readme_path, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    links = re.findall(r"\[.*?\]\(([^)]+)\)", content)
+    # TC-HO-05: Kiểm tra liên kết tệp markdown trên cả 3 tài liệu bàn giao cốt lõi (kể cả badge lồng nhau, cấm file:// cục bộ)
+    docs_to_audit = [
+        "README.md",
+        os.path.join("docs", "handover-checklist.md"),
+        os.path.join("docs", "presentation-slide-deck.md"),
+    ]
     broken_links = []
     checked_count = 0
-    for target in links:
-        # Bỏ qua liên kết web ngoài (http/https/shields)
-        if target.startswith("http://") or target.startswith("https://") or target.startswith("#"):
+    for rel_doc in docs_to_audit:
+        doc_path = os.path.join(REPO_ROOT, rel_doc)
+        if not os.path.exists(doc_path):
+            broken_links.append(f"{rel_doc}:<missing_file>")
             continue
-        checked_count += 1
-        clean_target = target.split("#")[0]
-        if clean_target.startswith("file:///"):
-            # Lấy phần đường dẫn tương đối từ URI
-            clean_rel = clean_target.replace("file:///G:/0duanmobile/uth-canteen-erp/", "").replace("file:///", "")
-            disk_path = os.path.join(REPO_ROOT, clean_rel.replace("/", os.sep))
-        else:
-            disk_path = os.path.join(REPO_ROOT, clean_target.replace("/", os.sep))
+        doc_dir = os.path.dirname(doc_path)
+        with open(doc_path, "r", encoding="utf-8-sig") as f:
+            content = f.read()
 
-        if not os.path.exists(disk_path):
-            broken_links.append(target)
+        content_no_code = _strip_fenced_code_blocks(content.replace("\r\n", "\n").replace("\r", "\n"))
+        # Bắt trọn cả liên kết chuẩn lẫn liên kết ngoài của badge lồng nhau [![alt](img)](target)
+        links = re.findall(r"\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)", content_no_code)
+        for target in links:
+            target = target.strip()
+            # Bỏ qua liên kết web ngoài (http/https/mailto) và neo nội bộ (#)
+            if target.startswith(("http://", "https://", "mailto:", "#")):
+                continue
+            checked_count += 1
+            clean_target = target.split("#")[0]
+            if clean_target.startswith("file://"):
+                broken_links.append(f"{rel_doc} -> {target} (non-portable file:// URI)")
+                continue
+
+            disk_path = os.path.normpath(os.path.join(doc_dir, clean_target.replace("/", os.sep)))
+            if not os.path.exists(disk_path):
+                broken_links.append(f"{rel_doc} -> {target}")
 
     if not broken_links and checked_count > 0:
-        record_test("TC-HO-05", category, "Kiểm toán Toàn vẹn Liên kết Tài liệu (Cross-file Links Audit)", "PASS", "Normal", f"Tất cả {checked_count} liên kết nội bộ trong README.md đều trỏ đến tệp thật trên đĩa")
+        record_test("TC-HO-05", category, "Kiểm toán Toàn vẹn Liên kết Tài liệu (Cross-file Links Audit)", "PASS", "Normal", f"Tất cả {checked_count} liên kết nội bộ (gồm badge lồng nhau) trên 3 tài liệu bàn giao đều trỏ đến tệp/thư mục thật trên đĩa")
     else:
         record_test("TC-HO-05", category, "Kiểm toán Toàn vẹn Liên kết Tài liệu", "FAIL", "Major", f"Liên kết gãy: {broken_links}")
 
@@ -428,8 +579,12 @@ def test_execution_verification_suites():
         res = subprocess.run(["git", "branch", "--show-current"], cwd=REPO_ROOT, capture_output=True, text=True, timeout=5)
         current_branch = res.stdout.strip()
         valid_branches = ["feature/ERP-12-readme-slide-handover", "develop", "main"]
-        branch_ok = current_branch in valid_branches or len(current_branch) == 0 # detached head on release tag
-        record_test("TC-HO-15", category, "Định danh Nhánh Git Hợp lệ Phục vụ Bàn giao", "PASS" if branch_ok else "FAIL", "Normal", f"Nhánh hiện tại: {current_branch or 'Detached HEAD'} (Hợp lệ: {valid_branches})")
+        branch_ok = (
+            current_branch in valid_branches
+            or current_branch.startswith("feature/ERP-12-")
+            or len(current_branch) == 0  # detached head on release tag
+        )
+        record_test("TC-HO-15", category, "Định danh Nhánh Git Hợp lệ Phục vụ Bàn giao", "PASS" if branch_ok else "FAIL", "Normal", f"Nhánh hiện tại: {current_branch or 'Detached HEAD'} (Hợp lệ: {valid_branches} hoặc feature/ERP-12-*)")
     except Exception as e:
         record_test("TC-HO-15", category, "Định danh Nhánh Git Bàn giao", "FAIL", "Major", str(e))
 

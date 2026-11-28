@@ -35,11 +35,11 @@ Hệ thống UTH Canteen ERP giải quyết bài toán tắc nghẽn giờ cao �
 ```mermaid
 flowchart LR
     A["🛒 Chuỗi Cung Ứng<br/>(Purchase / TV2)"] -->|"Nhập kho nguyên liệu"| B["📦 Quản Trị Tồn Kho<br/>(Stock / TV2)"]
-    B -->|"Cung ứng NVL & Trừ kho"| C["👨‍🍳 Bếp Trung Tâm<br/>(Kitchen / TV4)"]
-    C -->|"Sẵn sàng phục vụ"| D["🖥️ Điểm Bán Lẻ POS<br/>(POS Restaurant / TV3)"]
-    E["📱 Đặt Chỗ & Gọi Món QR<br/>(Meal Booking / TV5)"] -->|"Đồng bộ đơn & Đặt bàn"| D
-    E -->|"Lệnh chế biến món"| C
-    D -->|"Thanh toán & Doanh thu"| F["📊 Kế Toán & Quản Trị<br/>(DevOps / TV1)"]
+    B -->|"Cung ứng NVL & Trừ kho"| C["👨‍🍳 Nghiệp Vụ Bếp & Booking<br/>(Backend Models / TV4)"]
+    C -->|"Sẵn sàng phục vụ"| D["🖥️ Điểm Bán Lẻ POS & Báo Cáo<br/>(POS & Reporting / TV3)"]
+    E["📱 Giao Diện Đặt Món & Phân Quyền<br/>(UI, Security & QA / TV5)"] -->|"Đồng bộ đơn & Đặt bàn"| D
+    E -->|"Lệnh chế biến & Đặt suất ăn"| C
+    D -->|"Thanh toán & Tích hợp hệ thống"| F["📊 Tích Hợp & Hạ Tầng<br/>(DevOps / TV1)"]
 ```
 
 * **Chuỗi cung ứng minh bạch (SCM):** Quản lý 5 nhà cung cấp uy tín, mua 10 nguyên vật liệu định lượng rõ ràng với phiếu nhập kho 3 bước.
@@ -93,11 +93,13 @@ Dự án được thực hiện trong 3 tuần theo mô hình Scrum/Agile với 
 
 | Vai Trò | Thành Viên | Tài Khoản Jira / GitHub | Phạm Vi Trách Nhiệm Chính | Epics Sở Hữu |
 |:---|:---|:---|:---|:---:|
-| **TV1** | **Thắng Nguyễn Minh** | `thangnm7509@ut.edu.vn`<br/>`thangvn0987` | **Project Lead / DevOps / System Integration**<br/>• Kiến trúc tổng thể, Docker Compose, Git Workflow.<br/>• Tích hợp phân hệ E2E, Hợp đồng dữ liệu Data Contract.<br/>• Đóng gói bản phát hành MVP v1.0.0, backup/restore CSDL, README & Slides. | [KAN-118](https://nguyenthinhk52005.atlassian.net/browse/KAN-118) |
-| **TV2** | **Nguyễn Thịnh** | `nguyenthinhk52005` | **SCM & Inventory Lead**<br/>• Thiết kế phân hệ Mua hàng (Purchase) & Tồn kho (Inventory).<br/>• Quản lý danh mục 5 nhà cung cấp, 10 nguyên vật liệu.<br/>• Quy trình nạp phiếu nhập kho 3 bước và trừ kho nguyên liệu. | [KAN-119](https://nguyenthinhk52005.atlassian.net/browse/KAN-119) |
-| **TV3** | **Đoàn Tấn Phúc** | `tanphuc2005` | **POS & Retail Lead**<br/>• Thiết kế điểm bán lẻ POS Restaurant, sơ đồ 8 bàn ăn vật lý.<br/>• Nghiệp vụ phân tách đơn tại bàn (`dine_in`) và mang về (`takeaway`).<br/>• Xử lý hóa đơn, phiên bán hàng và thanh toán tiền mặt/chuyển khoản. | [KAN-120](https://nguyenthinhk52005.atlassian.net/browse/KAN-120) |
-| **TV4** | **Phan Bá Thìn** | `phanthink5` | **Kitchen & Operations Lead**<br/>• Thiết kế màn hình điều phối bếp KDS (Kitchen Display System).<br/>• Luồng trạng thái chế biến món (`draft` $\rightarrow$ `confirmed` $\rightarrow$ `serving` $\rightarrow$ `done`).<br/>• Xử lý thông báo món sẵn sàng và cơ chế báo hết món tức thời. | [KAN-121](https://nguyenthinhk52005.atlassian.net/browse/KAN-121) |
-| **TV5** | **Văn Tạ Huy Thiên** | `huthien2005` | **Meal Booking & Mobile UX Lead**<br/>• Thiết kế phân hệ Đặt cơm trực tuyến (Meal Booking QR).<br/>• Quản lý 3 ca ăn, thuật toán sinh mã QR động và mã PIN nhận món.<br/>• Giao diện web mobile responsive cho sinh viên và giảng viên. | [KAN-122](https://nguyenthinhk52005.atlassian.net/browse/KAN-122) |
+| **TV1** | **Thắng Nguyễn Minh** | `thangnm7509@ut.edu.vn`<br/>`thangvn0987` | **Project Lead / DevOps / System Integration**<br/>• Kiến trúc tổng thể, Docker Compose, Git Workflow (`AGENTS.md`, `docs/`, `scripts/`).<br/>• Tích hợp phân hệ E2E, Hợp đồng dữ liệu Data Contract.<br/>• Đóng gói bản phát hành MVP v1.0.0, backup/restore CSDL, README & Slides. | [KAN-118](https://nguyenthinhk52005.atlassian.net/browse/KAN-118) |
+| **TV2** | **Trọng Nghĩa** | `TN-Kieran` | **Purchase & Inventory Lead**<br/>• Thiết kế phân hệ Mua hàng (`purchase`) & Tồn kho (`stock`) tại `functional/purchase_inventory/`.<br/>• Quản lý danh mục sản phẩm POS, nhà cung cấp & nguyên vật liệu.<br/>• Quy trình mua hàng RFQ $\rightarrow$ PO $\rightarrow$ Nhập kho, nhận thiếu/backorder, kiểm kê & Reordering Rule. | [KAN-119](https://nguyenthinhk52005.atlassian.net/browse/KAN-119) |
+| **TV3** | **Văn Tạ Huy Thiên** | `TaHuyThienVan` | **POS & Reporting Lead**<br/>• Thiết kế điểm bán lẻ POS Restaurant & Báo cáo tại `functional/pos_reporting/`.<br/>• Nghiệp vụ phân tách đơn tại bàn (`dine_in`) và mang về (`takeaway`), quản lý ca bán hàng & thanh toán.<br/>• Đồng bộ danh mục TV2, xử lý giao dịch POS & báo cáo đối soát doanh thu. | [KAN-120](https://nguyenthinhk52005.atlassian.net/browse/KAN-120) |
+| **TV4** | **Dịch Viết Đức** | `dichvietduc2005` | **Backend Odoo & Booking Lead**<br/>• Phát triển mô hình dữ liệu & nghiệp vụ lõi tại `addons/canteen_management/models/`.<br/>• Triển khai ca ăn (`canteen.meal.slot`), đặt suất ăn (`canteen.meal.booking`) & mở rộng `res.partner` sinh viên.<br/>• Kiểm soát vòng đời trạng thái đơn (`draft` $\rightarrow$ `confirmed` $\rightarrow$ `serving` $\rightarrow$ `done`) & khóa đồng thời (`SELECT FOR UPDATE`) chống overbooking. | [KAN-121](https://nguyenthinhk52005.atlassian.net/browse/KAN-121) |
+| **TV5** | **Huỳnh Anh Phú** | `AnhPhu2306` | **UI, Security & QA Lead**<br/>• Phát triển giao diện Views/Menus, bảo mật & kiểm thử tại `addons/canteen_management/{views,security,tests}/`.<br/>• Ma trận phân quyền chuẩn Odoo 20 (`security/canteen_security.xml`, `security/ir.model.access.csv`, `security/canteen_rules.xml`).<br/>• Kiểm thử tự động (Automated Tests), kịch bản UAT & hỗ trợ nghiệm thu Demo. | [KAN-122](https://nguyenthinhk52005.atlassian.net/browse/KAN-122) |
+
+> **Quản trị Repository & Điều phối dự án:** **Nguyễn Hoàng Gia Thịnh** (`ThinhNguyen2005` / `nguyenthinhk52005@gmail.com`) — Repository Owner (`ThinhNguyen2005/uth-canteen-erp`) & Quản trị hệ thống Jira `KAN`.
 
 ---
 
@@ -297,9 +299,11 @@ uth-canteen-erp/
 │   └── canteen_management/               # Phân hệ Căn tin UTH Cốt Lõi (v20.0.1.0.0)
 │       ├── __init__.py
 │       ├── __manifest__.py               # Khai báo phiên bản, bản quyền LGPL-3, 6 dependencies Odoo 20
+│       ├── data/                         # Dữ liệu khởi tạo & Sequence sinh mã đặt suất (ir_sequence_data.xml)
 │       ├── demo/                         # Dữ liệu mẫu (canteen_demo_data.xml)
-│       ├── models/                       # Mô hình dữ liệu ORM (booking, dish, floor, table, etc.)
-│       ├── security/                     # Nhóm quyền hạn RBAC và bảng phân quyền ir.model.access.csv
+│       ├── models/                       # Mô hình dữ liệu ORM (ca ăn, đặt suất ăn & mở rộng nghiệp vụ)
+│       ├── security/                     # Nhóm quyền RBAC, Record Rules & bảng phân quyền ir.model.access.csv
+│       ├── tests/                        # Khung kiểm thử tự động của phân hệ (TV5)
 │       └── views/                        # Giao diện người dùng XML, menus, Kanban, Form, List
 ├── backups/                              # Thư mục lưu trữ các bản phát hành CSDL chính thức
 │   ├── uth_canteen_db_v1.0.0_mvp.zip     # Gói sao lưu MVP chính thức (manifest + dump.sql + filestore)
@@ -320,7 +324,7 @@ uth-canteen-erp/
 │   └── handover-checklist.md             # Biên bản bàn giao và checklist nghiệm thu
 ├── functional/                           # Tài liệu và dữ liệu nghiệp vụ của các thành viên
 │   ├── purchase_inventory/               # Danh mục nhà cung cấp và NVL của TV2
-│   └── pos_restaurant/                   # Sơ đồ và nghiệp vụ bán lẻ của TV3
+│   └── pos_reporting/                    # Sơ đồ, nghiệp vụ bán lẻ POS & báo cáo của TV3
 ├── scripts/                              # Bộ công cụ kịch bản tự động hóa DevOps
 │   ├── backup_db.ps1                     # Script sao lưu CSDL Odoo 20 trên Windows (PowerShell)
 │   ├── backup_db.sh                      # Script sao lưu CSDL Odoo 20 trên Linux/POSIX (Bash)
