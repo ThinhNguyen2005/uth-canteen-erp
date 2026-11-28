@@ -14,4 +14,47 @@
               name="Configuration"
               parent="menu_canteen_root"
               sequence="90"/>
+    <record id="action_canteen_meal_bookings" model="ir.actions.act_window">
+        <field name="name">Meal Bookings</field>
+        <field name="res_model">canteen.meal.booking</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_canteen_meal_booking_search"/>
+    </record>
+    <record id="action_canteen_meal_bookings_list" model="ir.actions.act_window.view">
+        <field name="sequence">10</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_canteen_meal_booking_list"/>
+        <field name="act_window_id" ref="action_canteen_meal_bookings"/>
+    </record>
+    <record id="action_canteen_meal_bookings_form" model="ir.actions.act_window.view">
+        <field name="sequence">20</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_canteen_meal_booking_form"/>
+        <field name="act_window_id" ref="action_canteen_meal_bookings"/>
+    </record>
+    <menuitem id="menu_canteen_meal_bookings" name="Meal Bookings"
+              parent="menu_canteen_operations" action="action_canteen_meal_bookings"
+              groups="canteen_management.group_canteen_cashier,canteen_management.group_canteen_manager" sequence="10"/>
+
+    <record id="action_canteen_meal_slots" model="ir.actions.act_window">
+        <field name="name">Meal Slots</field>
+        <field name="res_model">canteen.meal.slot</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_canteen_meal_slot_search"/>
+    </record>
+    <record id="action_canteen_meal_slots_list" model="ir.actions.act_window.view">
+        <field name="sequence">10</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_canteen_meal_slot_list"/>
+        <field name="act_window_id" ref="action_canteen_meal_slots"/>
+    </record>
+    <record id="action_canteen_meal_slots_form" model="ir.actions.act_window.view">
+        <field name="sequence">20</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_canteen_meal_slot_form"/>
+        <field name="act_window_id" ref="action_canteen_meal_slots"/>
+    </record>
+    <menuitem id="menu_canteen_meal_slots" name="Meal Slots"
+              parent="menu_canteen_configuration" action="action_canteen_meal_slots"
+              groups="canteen_management.group_canteen_manager" sequence="10"/>
 </odoo>
