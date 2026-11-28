@@ -17,6 +17,8 @@ Ngày thực hiện: 23/11/2026 (Refactored Round 2 - Zero Defect Compliance)
 
 import sys
 import os
+import io
+import re
 import csv
 import xml.etree.ElementTree as ET
 import ast
@@ -55,6 +57,398 @@ def print_header(title):
     print(f"\n{CYAN}{BOLD}{'='*80}{RESET}")
     print(f"{CYAN}{BOLD} {title}{RESET}")
     print(f"{CYAN}{BOLD}{'='*80}{RESET}")
+
+# ==============================================================================
+# HELPER KIỂM TOÁN ACL ĐA PHIÊN BẢN (ODOO 20 ir.access.csv & LEGACY ir.model.access.csv)
+# ==============================================================================
+_ODOO20_MODEL_RE = re.compile(r"\A[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+\Z")
+_LEGACY_MODEL_RE = re.compile(r"\A(?:[a-z_][a-z0-9_]*\.)?model_[a-z0-9_]+\Z")
+_XML_ID_RE = re.compile(r"\A[A-Za-z_][A-Za-z0-9_.-]*\Z")
+
+
+def _is_public_group(group_name):
+    normalized = group_name.strip().lower()
+    return normalized in ("base.group_public", "group_public") or normalized.endswith(".group_public")
+
+
+def _try_literal(node):
+    try:
+        return True, ast.literal_eval(node)
+    except Exception:
+        return False, None
+
+
+def _eval_domain_leaf(node):
+    """Đánh giá một phần tử lá domain AST an toàn (không bao giờ hash list/dict):
+    Trả về ('TRUE' | 'FALSE' | 'DYNAMIC', error_or_None).
+    """
+    ok, val = _try_literal(node)
+    if ok:
+        if isinstance(val, bool):
+            return ("TRUE" if val else "FALSE"), None
+        if isinstance(val, int) and val in (0, 1):
+            return ("TRUE" if val == 1 else "FALSE"), None
+        if not isinstance(val, (list, tuple)):
+            return "DYNAMIC", f"Phần tử domain không hợp lệ: {val!r}"
+
+    if isinstance(node, (ast.Tuple, ast.List)):
+        if len(node.elts) != 3:
+            return "DYNAMIC", f"Biểu thức lá domain phải gồm đúng 3 phần tử (field, op, value), nhận được {len(node.elts)}"
+        lhs_ok, lhs = _try_literal(node.elts[0])
+        op_ok, op = _try_literal(node.elts[1])
+        rhs_ok, rhs = _try_literal(node.elts[2])
+
+        if not op_ok or not isinstance(op, str):
+            return "DYNAMIC", "Toán tử trong lá domain phải là chuỗi hợp lệ"
+
+        # Hằng số so sánh với hằng số: (1, '=', 1), (2, '=', 2), (1, '!=', 0), (1, '=', 0)...
+        if lhs_ok and rhs_ok and not isinstance(lhs, str):
+            if op in ("=", "=="):
+                return ("TRUE" if lhs == rhs else "FALSE"), None
+            if op in ("!=", "<>"):
+                return ("TRUE" if lhs != rhs else "FALSE"), None
+
+        # So sánh trực tiếp trên trường 'id' của bảng (luôn là số nguyên dương >= 1)
+        if lhs_ok and lhs == "id" and rhs_ok and isinstance(rhs, (int, bool)):
+            if op in ("!=", "<>") and (rhs is False or rhs == 0):
+                return "TRUE", None
+            if op == ">" and rhs == 0 and not isinstance(rhs, bool):
+                return "TRUE", None
+            if op == ">=" and rhs in (0, 1) and not isinstance(rhs, bool):
+                return "TRUE", None
+
+        # Trường hợp còn lại (kể cả list hằng như ('state', 'in', ['draft', 'confirmed']) hay biến user.id)
+        return "DYNAMIC", None
+
+    # Biểu thức động không phải literal (ví dụ hàm/biến trả về tuple lá)
+    return "DYNAMIC", None
+
+
+def _is_unrestricted_or_tautology_domain(domain_expr):
+    """Kiểm tra cú pháp domain Odoo (hỗ trợ Polish notation '&', '|', '!') và phát hiện tautology."""
+    expr = domain_expr.strip()
+    if expr in ("", "."):
+        return True, None
+    try:
+        tree = ast.parse(expr, mode="eval")
+    except SyntaxError as exc:
+        return False, f"Cú pháp domain Python không hợp lệ: {exc.msg}"
+
+    body = tree.body
+    # Top-level literal bool/int tautology: True, 1, (1)
+    ok_top, val_top = _try_literal(body)
+    if ok_top:
+        if val_top is True or (isinstance(val_top, int) and not isinstance(val_top, bool) and val_top == 1):
+            return True, None
+        if val_top is False or (isinstance(val_top, int) and not isinstance(val_top, bool) and val_top == 0):
+            return False, None
+        if not isinstance(val_top, (list, tuple)):
+            return False, f"Giá trị domain không hợp lệ (yêu cầu list/tuple domain Odoo, nhận {type(val_top).__name__})"
+
+    if not isinstance(body, (ast.List, ast.Tuple)):
+        # Cho phép biểu thức động cấp cao (vd: variable) nhưng đã chặn mọi literal sai kiểu ở trên
+        return False, None
+
+    elts = body.elts
+    if not elts:
+        return True, None
+
+    # Parse Polish notation prefix operators ('&', '|', '!')
+    idx = 0
+
+    def parse_term():
+        nonlocal idx
+        if idx >= len(elts):
+            return "DYNAMIC", "Thiếu toán hạng cho toán tử logic trong domain"
+        node = elts[idx]
+        idx += 1
+        ok_op, op_val = _try_literal(node)
+        if ok_op and isinstance(op_val, str) and op_val in ("&", "|", "!"):
+            if op_val == "!":
+                sub, err = parse_term()
+                if err:
+                    return "DYNAMIC", err
+                if sub == "FALSE":
+                    return "TRUE", None
+                if sub == "TRUE":
+                    return "FALSE", None
+                return "DYNAMIC", None
+            left, err_l = parse_term()
+            if err_l:
+                return "DYNAMIC", err_l
+            right, err_r = parse_term()
+            if err_r:
+                return "DYNAMIC", err_r
+            if op_val == "|":
+                if left == "TRUE" or right == "TRUE":
+                    return "TRUE", None
+                if left == "FALSE" and right == "FALSE":
+                    return "FALSE", None
+                return "DYNAMIC", None
+            # op_val == "&"
+            if left == "FALSE" or right == "FALSE":
+                return "FALSE", None
+            if left == "TRUE" and right == "TRUE":
+                return "TRUE", None
+            return "DYNAMIC", None
+        return _eval_domain_leaf(node)
+
+    top_terms = []
+    while idx < len(elts):
+        res_t, err_t = parse_term()
+        if err_t:
+            return False, err_t
+        top_terms.append(res_t)
+
+    # Implicit AND giữa các mệnh đề cấp cao nhất
+    is_always_true = bool(top_terms) and all(t == "TRUE" for t in top_terms)
+    return is_always_true, None
+
+
+def validate_acl_bytes(raw_acl, acl_mode, filename):
+    """Kiểm toán nội dung nhị phân tệp ACL (Odoo 20 hoặc Legacy), trả về dict kết quả thuần."""
+    if acl_mode not in ("odoo20", "legacy"):
+        raise ValueError(f"Unsupported acl_mode: {acl_mode!r} (expected 'odoo20' or 'legacy')")
+
+    errors = []
+    public_has_write = False
+    global_unrestricted_write = False
+    active_rule_count = 0
+
+    if raw_acl.startswith(b"\xef\xbb\xbf"):
+        errors.append(f"Tệp {filename} chứa UTF-8 BOM (vi phạm chuẩn UTF-8 No BOM)")
+    elif raw_acl.startswith((b"\xff\xfe", b"\xfe\xff")):
+        errors.append(f"Tệp {filename} chứa UTF-16 BOM (yêu cầu UTF-8 No BOM)")
+    if b"\x00" in raw_acl:
+        errors.append(f"Tệp {filename} chứa byte NUL (encoding không hợp lệ)")
+
+    try:
+        acl_text = raw_acl.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        errors.append(f"Tệp {filename} không phải UTF-8 hợp lệ: {exc}")
+        return {
+            "ok": False,
+            "errors": errors,
+            "public_has_write": False,
+            "global_unrestricted_write": False,
+            "active_rule_count": 0,
+        }
+
+    rows_with_line = []
+    reader = csv.reader(io.StringIO(acl_text, newline=""), strict=True)
+    try:
+        for row in reader:
+            if not row or not any(cell.strip() for cell in row):
+                continue
+            if row[0].lstrip().startswith("#"):
+                continue
+            rows_with_line.append((reader.line_num, row))
+    except csv.Error as exc:
+        errors.append(f"Lỗi cú pháp CSV trong {filename} tại dòng {reader.line_num}: {exc}")
+        return {
+            "ok": False,
+            "errors": errors,
+            "public_has_write": False,
+            "global_unrestricted_write": False,
+            "active_rule_count": 0,
+        }
+
+    if not rows_with_line:
+        errors.append(f"Tệp {filename} không có dòng header hợp lệ")
+        return {
+            "ok": False,
+            "errors": errors,
+            "public_has_write": False,
+            "global_unrestricted_write": False,
+            "active_rule_count": 0,
+        }
+
+    hdr_line, header = rows_with_line[0]
+    seen_ids = set()
+
+    if acl_mode == "odoo20":
+        expected_hdr = ["id", "name", "model_id", "group_id/id", "operation", "domain"]
+        if header != expected_hdr:
+            errors.append(f"Dòng {hdr_line}: Header ir.access.csv sai chuẩn Odoo 20 (khớp chính xác, không khoảng trắng thừa): {header} != {expected_hdr}")
+        else:
+            for line_no, r in rows_with_line[1:]:
+                if len(r) != 6:
+                    errors.append(f"Dòng {line_no}: ir.access.csv có {len(r)} cột (yêu cầu đúng 6 cột)")
+                    continue
+                active_rule_count += 1
+                xml_id, rule_name, model_id, group_raw, op_raw, domain_raw = r
+
+                if not xml_id or not _XML_ID_RE.match(xml_id):
+                    errors.append(f"Dòng {line_no}: Cột id '{xml_id}' không hợp lệ (rỗng, chứa khoảng trắng hoặc ký tự cấm)")
+                elif xml_id in seen_ids:
+                    errors.append(f"Dòng {line_no}: Trùng lặp External ID '{xml_id}'")
+                else:
+                    seen_ids.add(xml_id)
+
+                if not rule_name or not rule_name.strip():
+                    errors.append(f"Dòng {line_no}: Cột name không được rỗng")
+
+                if not model_id or model_id != model_id.strip() or not _ODOO20_MODEL_RE.match(model_id):
+                    errors.append(f"Dòng {line_no}: model_id '{model_id}' sai chuẩn tên kỹ thuật Odoo 20 (vd: canteen.meal.booking)")
+
+                if group_raw != group_raw.strip():
+                    errors.append(f"Dòng {line_no}: group_id/id chứa khoảng trắng thừa: '{group_raw}'")
+
+                op_clean = op_raw.strip().lower()
+                has_mutating_op = any(ch in op_clean for ch in ("c", "u", "d"))
+                if (
+                    not op_raw
+                    or op_raw != op_raw.strip()
+                    or op_raw != op_raw.lower()
+                    or not (set(op_raw) <= {"c", "r", "u", "d"})
+                    or len(op_raw) != len(set(op_raw))
+                ):
+                    errors.append(f"Dòng {line_no}: operation '{op_raw}' không hợp lệ (chỉ nhận chữ thường duy nhất thuộc c/r/u/d)")
+
+                is_tautology, domain_err = _is_unrestricted_or_tautology_domain(domain_raw)
+                if domain_err:
+                    errors.append(f"Dòng {line_no}: {domain_err}")
+
+                group = group_raw.strip()
+                if _is_public_group(group) and has_mutating_op:
+                    public_has_write = True
+                if group == "" and is_tautology and has_mutating_op:
+                    global_unrestricted_write = True
+    elif acl_mode == "legacy":
+        expected_hdr = [
+            "id", "name", "model_id:id", "group_id:id",
+            "perm_read", "perm_write", "perm_create", "perm_unlink"
+        ]
+        if header != expected_hdr:
+            errors.append(f"Dòng {hdr_line}: Header ir.model.access.csv sai chuẩn: {header} != {expected_hdr}")
+        else:
+            for line_no, r in rows_with_line[1:]:
+                if len(r) != 8:
+                    errors.append(f"Dòng {line_no}: ir.model.access.csv có {len(r)} cột (yêu cầu đúng 8 cột)")
+                    continue
+                active_rule_count += 1
+                xml_id, rule_name, model_id, group_raw, p_read, p_write, p_create, p_unlink = r
+
+                if not xml_id or not _XML_ID_RE.match(xml_id):
+                    errors.append(f"Dòng {line_no}: Cột id '{xml_id}' không hợp lệ (rỗng, chứa khoảng trắng hoặc ký tự cấm)")
+                elif xml_id in seen_ids:
+                    errors.append(f"Dòng {line_no}: Trùng lặp External ID '{xml_id}'")
+                else:
+                    seen_ids.add(xml_id)
+
+                if not rule_name or not rule_name.strip():
+                    errors.append(f"Dòng {line_no}: Cột name không được rỗng")
+
+                if not model_id or model_id != model_id.strip() or not _LEGACY_MODEL_RE.match(model_id):
+                    errors.append(f"Dòng {line_no}: model_id:id '{model_id}' sai chuẩn external ID legacy (model_...)")
+
+                if group_raw != group_raw.strip():
+                    errors.append(f"Dòng {line_no}: group_id:id chứa khoảng trắng thừa: '{group_raw}'")
+
+                for col_name, perm_val in (
+                    ("perm_read", p_read),
+                    ("perm_write", p_write),
+                    ("perm_create", p_create),
+                    ("perm_unlink", p_unlink),
+                ):
+                    if perm_val not in ("0", "1"):
+                        errors.append(f"Dòng {line_no}: {col_name}='{perm_val}' không hợp lệ (chỉ nhận '0' hoặc '1')")
+
+                group = group_raw.strip()
+                has_mutating = any(v.strip().lower() in ("1", "true", "yes") for v in (p_write, p_create, p_unlink))
+                if _is_public_group(group) and has_mutating:
+                    public_has_write = True
+                if group == "" and has_mutating:
+                    global_unrestricted_write = True
+
+    return {
+        "ok": not errors and not public_has_write and not global_unrestricted_write,
+        "errors": errors,
+        "public_has_write": public_has_write,
+        "global_unrestricted_write": global_unrestricted_write,
+        "active_rule_count": active_rule_count,
+    }
+
+
+def validate_security_acl(security_dir, manifest_data):
+    """Kiểm toán toàn diện cấu trúc ACL trên đĩa & đồng bộ với __manifest__.py (Odoo 20 + Legacy)."""
+    v20_rel = "security/ir.access.csv"
+    legacy_rel = "security/ir.model.access.csv"
+    sec_xml_rel = "security/canteen_security.xml"
+    rules_xml_rel = "security/canteen_rules.xml"
+    v20_path = os.path.join(security_dir, "ir.access.csv")
+    legacy_path = os.path.join(security_dir, "ir.model.access.csv")
+
+    has_v20 = os.path.exists(v20_path)
+    has_legacy = os.path.exists(legacy_path)
+    errors = []
+
+    if has_v20 and has_legacy:
+        return {
+            "ok": False,
+            "acl_mode": "conflict",
+            "errors": ["Tồn tại song song cả security/ir.access.csv và security/ir.model.access.csv (cần xóa tệp cũ để tránh xung đột nạp ACL)"],
+            "public_has_write": False,
+            "global_unrestricted_write": False,
+            "active_rule_count": 0,
+        }
+    if not has_v20 and not has_legacy:
+        return {
+            "ok": False,
+            "acl_mode": None,
+            "errors": ["Không tìm thấy security/ir.access.csv hoặc security/ir.model.access.csv"],
+            "public_has_write": False,
+            "global_unrestricted_write": False,
+            "active_rule_count": 0,
+        }
+
+    acl_mode = "odoo20" if has_v20 else "legacy"
+    acl_path = v20_path if has_v20 else legacy_path
+    expected_rel = v20_rel if has_v20 else legacy_rel
+    counterpart_rel = legacy_rel if has_v20 else v20_rel
+
+    count_expected = manifest_data.count(expected_rel)
+    if count_expected == 0:
+        errors.append(f"Tệp {expected_rel} tồn tại trên đĩa nhưng chưa được khai báo trong __manifest__.py")
+    elif count_expected > 1:
+        errors.append(f"Tệp {expected_rel} bị khai báo trùng lặp {count_expected} lần trong __manifest__.py")
+
+    if counterpart_rel in manifest_data:
+        errors.append(f"__manifest__.py vẫn còn khai báo tệp ACL cũ/đối ứng '{counterpart_rel}'")
+
+    if sec_xml_rel not in manifest_data:
+        errors.append(f"__manifest__.py thiếu khai báo '{sec_xml_rel}'")
+    elif count_expected == 1 and manifest_data.index(sec_xml_rel) > manifest_data.index(expected_rel):
+        errors.append(f"Sai thứ tự nạp trong __manifest__.py: '{sec_xml_rel}' phải đứng trước '{expected_rel}'")
+
+    if acl_mode == "odoo20":
+        if rules_xml_rel in manifest_data:
+            errors.append(f"__manifest__.py vẫn khai báo '{rules_xml_rel}' dù đã chuyển sang Odoo 20 ir.access.csv")
+        for fname in sorted(os.listdir(security_dir)):
+            if not fname.lower().endswith(".xml"):
+                continue
+            xml_path = os.path.join(security_dir, fname)
+            try:
+                rtree = ET.parse(xml_path)
+                if rtree.getroot().findall(".//record[@model='ir.rule']"):
+                    errors.append(f"Tệp security/{fname} vẫn chứa <record model='ir.rule'> không tương thích Odoo 20")
+            except ET.ParseError as exc:
+                errors.append(f"Tệp security/{fname} lỗi XML: {exc}")
+
+    with open(acl_path, "rb") as fb:
+        raw_acl = fb.read()
+
+    byte_res = validate_acl_bytes(raw_acl, acl_mode, expected_rel)
+    all_errors = errors + byte_res["errors"]
+    return {
+        "ok": not all_errors and not byte_res["public_has_write"] and not byte_res["global_unrestricted_write"],
+        "acl_mode": acl_mode,
+        "errors": all_errors,
+        "public_has_write": byte_res["public_has_write"],
+        "global_unrestricted_write": byte_res["global_unrestricted_write"],
+        "active_rule_count": byte_res["active_rule_count"],
+    }
+
 
 # ==============================================================================
 # TRỤ CỘT 1: BẢO MẬT, PHÂN QUYỀN & KIỂM SOÁT TRUY CẬP (SECURITY & ACL)
@@ -191,28 +585,38 @@ def test_security_and_access_control():
     else:
         record_test("TC01.5", domain, "Kiểm thử Negative: Chống IDOR qua access_token", "FAIL", "Critical", "Lỗ hổng IDOR chưa được ngăn chặn")
 
-    # TC01.6 (Negative Security): Kiểm tra quyền Khách công cộng trên tệp ACL (D04 fix)
-    acl_path = os.path.join(REPO_ROOT, "addons", "canteen_management", "security", "ir.model.access.csv")
-    with open(acl_path, "r", encoding="utf-8") as f:
-        reader = csv.reader(f)
-        acl_rows = [row for row in reader if row and not row[0].strip().startswith("#")]
+    # TC01.6 (Negative Security): Kiểm tra quyền Khách công cộng trên tệp ACL (Dual-Mode: Odoo 20 ir.access.csv & Legacy ir.model.access.csv)
+    security_dir = os.path.join(REPO_ROOT, "addons", "canteen_management", "security")
+    acl_res = validate_security_acl(security_dir, manifest_dict.get("data", []))
 
-    # Kiểm tra xem có dòng active nào cấp quyền cho group_public không
-    public_has_write = False
-    for r in acl_rows[1:]: # Bỏ qua header
-        if len(r) >= 8:
-            group = r[3].strip()
-            write_perm = r[5].strip()
-            create_perm = r[6].strip()
-            unlink_perm = r[7].strip()
-            if group == "base.group_public" and (write_perm == "1" or create_perm == "1" or unlink_perm == "1"):
-                public_has_write = True
-
-    # Nhận diện cổng phụ thuộc (Dependency Gate): Tệp ACL giữ template phân quyền cho đến khi model Python được nạp
-    if not public_has_write:
-        record_test("TC01.6", domain, "Kiểm thử Negative: Cô lập quyền Khách công cộng (Public Zero-Trust)", "PASS", "Critical", "group_public tuyệt đối không có quyền ghi/xóa CSDL; ACL model được bảo vệ qua Dependency Gate")
+    if acl_res["ok"]:
+        mode_label = (
+            "Odoo 20 ir.access.csv (6 cột)"
+            if acl_res["acl_mode"] == "odoo20"
+            else "Legacy ir.model.access.csv (8 cột)"
+        )
+        rule_note = (
+            "0 active rules – Dependency Gate"
+            if acl_res["active_rule_count"] == 0
+            else f"{acl_res['active_rule_count']} active rules"
+        )
+        record_test(
+            "TC01.6", domain,
+            "Kiểm thử Negative: Cô lập quyền Khách công cộng (Public Zero-Trust)",
+            "PASS", "Critical",
+            f"group_public tuyệt đối không có quyền ghi/xóa CSDL; sạch UTF-8 No BOM & schema [{mode_label}; {rule_note}]"
+        )
     else:
-        record_test("TC01.6", domain, "Kiểm thử Negative: Cô lập quyền Khách công cộng", "FAIL", "Blocker", "group_public được cấp quyền ghi trực tiếp trên CSDL!")
+        reasons = list(acl_res["errors"])
+        if acl_res["public_has_write"]:
+            reasons.append("group_public được cấp quyền ghi/tạo/xóa trực tiếp trên CSDL!")
+        if acl_res["global_unrestricted_write"]:
+            reasons.append("Phát hiện global rule không giới hạn cấp quyền ghi/tạo/xóa cho mọi người dùng!")
+        record_test(
+            "TC01.6", domain,
+            "Kiểm thử Negative: Cô lập quyền Khách công cộng",
+            "FAIL", "Blocker", "; ".join(reasons)
+        )
 
 # ==============================================================================
 # TRỤ CỘT 2: CHUỖI CUNG ỨNG & KHO HÀNG (PURCHASE -> INVENTORY)
