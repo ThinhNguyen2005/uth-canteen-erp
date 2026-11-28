@@ -1,5 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_canteen_meal_booking_tree" model="ir.ui.view">
+    <record id="view_canteen_meal_booking_list" model="ir.ui.view">
         <field name="name">canteen.meal.booking.list</field>
         <field name="model">canteen.meal.booking</field>
         <field name="arch" type="xml">
@@ -34,6 +35,7 @@
                         <field name="note"/>
                     </group>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>
