@@ -1,0 +1,11 @@
+ERP-22 - T03 NEGATIVE STOCK TEST
+Database: uth_canteen_erp22_sandbox
+Picking: WH/OUT/00002
+Product: Trà lài Tân Cương ướp hoa tươi (product_id 29)
+Source: WH/Tồn kho (location_id 6)
+Destination: Customers (location_id 2)
+Demand: 1 kg
+Before: on_hand 0 kg, reserved 1 kg
+After: picking state done
+After: on_hand -1 kg, reserved 0 kg
+Result: Odoo allows validation and negative stock.
