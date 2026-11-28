@@ -23,7 +23,7 @@
     <record id="action_canteen_meal_bookings_list" model="ir.actions.act_window.view">
         <field name="sequence">10</field>
         <field name="view_mode">list</field>
-        <field name="view_id" ref="view_canteen_meal_booking_tree"/>
+        <field name="view_id" ref="view_canteen_meal_booking_list"/>
         <field name="act_window_id" ref="action_canteen_meal_bookings"/>
     </record>
     <record id="action_canteen_meal_bookings_form" model="ir.actions.act_window.view">
@@ -34,7 +34,7 @@
     </record>
     <menuitem id="menu_canteen_meal_bookings" name="Meal Bookings"
               parent="menu_canteen_operations" action="action_canteen_meal_bookings"
-              groups="group_canteen_cashier,group_canteen_manager" sequence="10"/>
+              groups="canteen_management.group_canteen_cashier,canteen_management.group_canteen_manager" sequence="10"/>
 
     <record id="action_canteen_meal_slots" model="ir.actions.act_window">
         <field name="name">Meal Slots</field>
@@ -56,5 +56,5 @@
     </record>
     <menuitem id="menu_canteen_meal_slots" name="Meal Slots"
               parent="menu_canteen_configuration" action="action_canteen_meal_slots"
-              groups="group_canteen_manager" sequence="10"/>
+              groups="canteen_management.group_canteen_manager" sequence="10"/>
 </odoo>
