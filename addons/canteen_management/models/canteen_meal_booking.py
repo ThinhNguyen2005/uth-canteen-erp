@@ -151,70 +151,54 @@ class CanteenMealBooking(models.Model):
         slot_model.flush_model(["capacity", "booked_count", "state", "active"])
         booking_model.flush_model(["slot_id", "state", "quantity"])
 
-        already_locked = frozenset(self.env.context.get("canteen_slot_locked_ids", ()))
-        ids_to_lock = [sid for sid in ordered_ids if sid not in already_locked]
         cr = self.env.cr
-        locked_rows = []
-
-        if ids_to_lock:
-            lock_clause = "FOR UPDATE NOWAIT" if nowait else "FOR UPDATE"
-            query = (
-                "SELECT id, capacity, booked_count, state, active "
-                "FROM canteen_meal_slot "
-                "WHERE id IN %s "
-                "ORDER BY id ASC "
-                f"{lock_clause}"
-            )
-            try:
-                with cr.savepoint():
-                    prev_timeout = None
-                    if not nowait:
-                        cr.execute("SELECT current_setting('lock_timeout')")
-                        row = cr.fetchone()
-                        prev_timeout = row[0] if row else None
-                        cr.execute(
-                            "SELECT set_config('lock_timeout', %s, true)",
-                            (self.SLOT_LOCK_TIMEOUT,),
-                        )
-                    cr.execute(query, (tuple(ids_to_lock),))
-                    locked_rows.extend(cr.dictfetchall())
-                    if prev_timeout is not None:
-                        cr.execute(
-                            "SELECT set_config('lock_timeout', %s, true)",
-                            (prev_timeout,),
-                        )
-            except psycopg2.OperationalError as err:
-                pgcode = getattr(err, "pgcode", None)
-                if pgcode == "55P03":
-                    _logger.warning(
-                        "Lock contention on canteen.meal.slot ids %s: %s",
-                        ids_to_lock,
-                        err,
+        lock_clause = "FOR UPDATE NOWAIT" if nowait else "FOR UPDATE"
+        query = (
+            "SELECT id, capacity, booked_count, state, active "
+            "FROM canteen_meal_slot "
+            "WHERE id IN %s "
+            "ORDER BY id ASC "
+            f"{lock_clause}"
+        )
+        try:
+            with cr.savepoint():
+                prev_timeout = None
+                if not nowait:
+                    cr.execute("SELECT current_setting('lock_timeout')")
+                    row = cr.fetchone()
+                    prev_timeout = row[0] if row else None
+                    cr.execute(
+                        "SELECT set_config('lock_timeout', %s, true)",
+                        (self.SLOT_LOCK_TIMEOUT,),
                     )
-                    raise UserError(
-                        _(
-                            "Hệ thống đang bận xử lý lượt đặt khác cho ca ăn này, vui lòng thử lại sau giây lát!"
-                        )
-                    ) from err
-                if pgcode in ("40001", "40P01"):
-                    _logger.warning(
-                        "Transaction contention (%s) on canteen.meal.slot ids %s; propagating for transaction retry: %s",
-                        pgcode,
-                        ids_to_lock,
-                        err,
+                cr.execute(query, (tuple(ordered_ids),))
+                locked_rows = cr.dictfetchall()
+                if prev_timeout is not None:
+                    cr.execute(
+                        "SELECT set_config('lock_timeout', %s, true)",
+                        (prev_timeout,),
                     )
-                raise
-
-        reused_ids = [sid for sid in ordered_ids if sid in already_locked]
-        if reused_ids:
-            cr.execute(
-                "SELECT id, capacity, booked_count, state, active "
-                "FROM canteen_meal_slot "
-                "WHERE id IN %s "
-                "ORDER BY id ASC",
-                (tuple(reused_ids),),
-            )
-            locked_rows.extend(cr.dictfetchall())
+        except psycopg2.OperationalError as err:
+            pgcode = getattr(err, "pgcode", None)
+            if pgcode == "55P03":
+                _logger.warning(
+                    "Lock contention on canteen.meal.slot ids %s: %s",
+                    ordered_ids,
+                    err,
+                )
+                raise UserError(
+                    _(
+                        "Hệ thống đang bận xử lý lượt đặt khác cho ca ăn này, vui lòng thử lại sau giây lát!"
+                    )
+                ) from err
+            if pgcode in ("40001", "40P01"):
+                _logger.warning(
+                    "Transaction contention (%s) on canteen.meal.slot ids %s; propagating for transaction retry: %s",
+                    pgcode,
+                    ordered_ids,
+                    err,
+                )
+            raise
 
         if not locked_rows:
             return {}
@@ -283,6 +267,7 @@ class CanteenMealBooking(models.Model):
             raise ValidationError(_("Mỗi lượt đặt chỉ được phép từ 1 đến 3 suất ăn!"))
 
         self._check_create_permission(partner_id, "confirmed", self._is_manager())
+        self.check_access("create")
 
         locked_slots = self._lock_slots_for_update([slot_id], nowait=nowait)
         slot_data = locked_slots.get(slot_id)
@@ -291,10 +276,7 @@ class CanteenMealBooking(models.Model):
 
         self._validate_locked_slot_capacity(slot_data, quantity, exc_cls=UserError)
 
-        locked_ctx = frozenset(self.env.context.get("canteen_slot_locked_ids", ())) | {
-            slot_id
-        }
-        return self.with_context(canteen_slot_locked_ids=locked_ctx).create(
+        return self.create(
             [
                 {
                     "partner_id": partner_id,
