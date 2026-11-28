@@ -70,21 +70,28 @@ Xây dựng hệ thống ERP khép kín 5 phân hệ trên nền tảng Odoo 20:
 
 ## 👥 2. Cơ Cấu Đội Ngũ & Ma Trận Trách Nhiệm (RACI)
 
+<style scoped>
+table { font-size: 14px; }
+p { font-size: 16px; margin-bottom: 8px; }
+</style>
+
 Dự án được tổ chức chặt chẽ với 5 thành viên sở hữu 5 Epic nghiệp vụ trên Jira:
 
 | Thành Viên | Vai Trò | Jira Key | Trách Nhiệm Cốt Lõi |
 |:---|:---|:---:|:---|
-| **Thắng Nguyễn Minh** | **TV1 (Lead / DevOps)** | [KAN-118](https://nguyenthinhk52005.atlassian.net/browse/KAN-118) | Kiến trúc hệ thống, Docker Compose, CI/CD Git Workflow, Tích hợp liên phân hệ, Đóng gói Release MVP v1.0.0 |
-| **Nguyễn Thịnh** | **TV2 (SCM / Inventory)** | [KAN-119](https://nguyenthinhk52005.atlassian.net/browse/KAN-119) | Danh mục 5 nhà cung cấp, 10 nguyên vật liệu, Luồng PO ➔ Stock Picking, Trừ tồn kho |
-| **Đoàn Tấn Phúc** | **TV3 (POS / Retail)** | [KAN-120](https://nguyenthinhk52005.atlassian.net/browse/KAN-120) | Điểm bán lẻ POS Restaurant, Sơ đồ 8 bàn ăn vật lý 2D, Triệt tiêu bàn ảo Takeaway |
-| **Phan Bá Thìn** | **TV4 (Kitchen / KDS)** | [KAN-121](https://nguyenthinhk52005.atlassian.net/browse/KAN-121) | Màn hình điều phối Bếp KDS, Vòng đời món ăn (`draft` ➔ `confirmed` ➔ `serving` ➔ `done`), Báo hết món |
-| **Văn Tạ Huy Thiên** | **TV5 (Meal Booking / UX)**| [KAN-122](https://nguyenthinhk52005.atlassian.net/browse/KAN-122) | Đặt suất ăn trước, Thuật toán sinh mã QR động & PIN 4 số, Menu 13 món Odoo 20 |
+| **Thắng Nguyễn Minh** | **TV1 (Lead / DevOps)** | [KAN-118](https://nguyenthinhk52005.atlassian.net/browse/KAN-118) | Kiến trúc, Docker Compose, Git Workflow, Tích hợp E2E & Release MVP v1.0.0 (`thangvn0987`) |
+| **Trọng Nghĩa** | **TV2 (Purchase / Stock)** | [KAN-119](https://nguyenthinhk52005.atlassian.net/browse/KAN-119) | Danh mục sản phẩm/NCC/NVL, Luồng RFQ ➔ PO ➔ Nhập kho, Backorder & Reordering (`TN-Kieran`) |
+| **Văn Tạ Huy Thiên** | **TV3 (POS / Reporting)** | [KAN-120](https://nguyenthinhk52005.atlassian.net/browse/KAN-120) | POS Restaurant, Sơ đồ 8 bàn vật lý 2D, Triệt tiêu bàn ảo Takeaway & Báo cáo (`TaHuyThienVan`) |
+| **Dịch Viết Đức** | **TV4 (Backend / Booking)** | [KAN-121](https://nguyenthinhk52005.atlassian.net/browse/KAN-121) | Models Odoo (`canteen.meal.slot`, `canteen.meal.booking`, `res.partner`) & Concurrency Lock (`dichvietduc2005`) |
+| **Huỳnh Anh Phú** | **TV5 (UI / Security / QA)** | [KAN-122](https://nguyenthinhk52005.atlassian.net/browse/KAN-122) | Giao diện Views/Menus, Phân quyền `security/ir.model.access.csv` & Rules, Test & UAT (`AnhPhu2306`) |
+
+*Quản trị Repository & Điều phối Jira:* **Nguyễn Hoàng Gia Thịnh** (`ThinhNguyen2005` / `nguyenthinhk52005@gmail.com`) — Repository Owner (`ThinhNguyen2005/uth-canteen-erp`).
 
 ---
 
 ## 📅 3. Tổng Quan Lộ Trình Triển Khai 3 Tuần
 
-Dự án hoàn thành **100% tiến độ** đúng cam kết mốc thời gian không trễ hạn:
+Lộ trình nền tảng MVP v1.0.0 (Epic KAN-118 — 12 tác vụ DevOps & Tích hợp của TV1) hoàn thành **100% tiến độ** đúng cam kết mốc thời gian không trễ hạn:
 
 ```text
 Tuần 1: KHỞI ĐỘNG & NỀN MÓNG (D1 - D5)
@@ -125,8 +132,8 @@ Quy trình vận hành khép kín xuyên suốt 5 mắt xích nghiệp vụ:
 1. **Mua hàng (TV2):** Tạo RFQ cho Nhà cung cấp `partner_supplier_an_sang` ➔ Phê duyệt đơn mua `PO/2026/0001` (3 nguyên vật liệu).
 2. **Nhập kho (TV2):** Odoo tự động sinh phiếu điều chuyển `WH/IN/0001` ➔ Kiểm đếm & Xác nhận nhập kho ➔ Tồn kho khả dụng tăng tương ứng.
 3. **Bán lẻ POS (TV3):** Thu ngân mở phiên bán hàng POS ➔ Gọi món tại bàn `table_a01` hoặc đơn mang về `takeaway`.
-4. **Màn hình Bếp (TV4):** Bếp nhận đơn tức thời trên KDS ➔ Nấu món ➔ Chuyển trạng thái `serving` (Sẵn sàng phục vụ).
-5. **Khách hàng nhận món (TV5):** Quét mã QR hoặc đọc mã PIN 4 chữ số ➔ Hệ thống đổi trạng thái `done` và hoàn tất chu trình.
+4. **Backend Đặt suất & Điều phối Bếp (TV4):** Thiết kế mô hình `canteen.meal.slot` / `canteen.meal.booking` & luồng trạng thái `draft` ➔ `confirmed` ➔ `serving` chống overbooking.
+5. **Giao diện UI, Bảo mật & Nhận món (TV5):** Thiết kế Views/Menus, ma trận phân quyền `security/ir.model.access.csv` & mã QR/PIN 4 chữ số ➔ Chuyển trạng thái `done` hoàn tất chu trình.
 
 ---
 
@@ -205,7 +212,7 @@ Dự án bàn giao bộ hồ sơ kỹ thuật đồ sộ và hoàn chỉnh:
 4. **docs/data-contract.md:** Hợp đồng kỹ thuật dữ liệu v2.0 giữa 5 thành viên.
 5. **docs/integration-test-report.md:** Báo cáo kiểm thử tích hợp 29 ca chi tiết.
 6. **docs/release-mvp-guide.md:** Cẩm nang phát hành và khôi phục trên môi trường sạch.
-7. **docs/handover-checklist.md:** Biên bản bàn giao và checklist nghiệm thu 100% tiêu chí.
+7. **docs/handover-checklist.md:** Biên bản bàn giao và checklist đối soát trạng thái nghiệm thu từng phân hệ trên nhánh `develop`.
 8. **docs/presentation-slide-deck.md:** Slide thuyết trình tổng kết 3 tuần dự án (16 slide).
 
 ---
@@ -279,7 +286,7 @@ Dự án tuân thủ nghiêm ngặt quy trình 4 bước khép kín trước m�
 
 ## 🏁 14. Tổng Kết Bàn Giao Kỹ Thuật
 
-* **Tiến độ tổng thể:** **100% các Epic và User Story** từ Tuần 1 đến Tuần 3 hoàn thành xuất sắc.
+* **Tiến độ nền tảng MVP v1.0.0:** **100% 12 tác vụ DevOps & Tích hợp (`KAN-123`..`KAN-134`)** và khung tích hợp trên `develop` hoàn thành đúng hạn *(các nhánh feature mở rộng của TV4/TV5 tiếp tục merge theo quy trình PR)*.
 * **Chất lượng kỹ thuật:** **62/62 Kịch bản kiểm thử tự động ĐẠT (PASS 100%)**, đạt chuẩn **Zero Defect**.
 * **Khả năng triển khai:** Gói phát hành `uth_canteen_db_v1.0.0_mvp.zip` và bộ script tự động hóa sẵn sàng khôi phục trên mọi máy chủ sạch trong vòng **5 giây**.
 * **Tính sẵn sàng chuyển giao:** Đầy đủ hồ sơ đặc tả, mã nguồn, cấu hình Docker, slide thuyết trình và biên bản nghiệm thu.

@@ -3,7 +3,7 @@
 **Mã nhiệm vụ Jira:** [KAN-134](https://nguyenthinhk52005.atlassian.net/browse/KAN-134) ([ERP-12][TV1] Hoàn thiện README, slide, tài liệu bàn giao)  
 **Thuộc Epic:** [KAN-118](https://nguyenthinhk52005.atlassian.net/browse/KAN-118) ([UTH Canteen ERP] DevOps và tích hợp)  
 **Phiên bản bàn giao:** `v1.0.0-mvp` (Semantic Versioning 2.0.0)  
-**Ngày lập biên bản:** 23/11/2026  
+**Ngày lập biên bản:** 23/11/2026 *(Hiệu đính danh sách đội ngũ & liên kết: 28/11/2026)*  
 **Địa điểm thực hiện:** Trường Đại học Giao thông vận tải TP.HCM (UTH)
 
 ---
@@ -11,11 +11,12 @@
 ## 1. THÔNG TIN CÁC BÊN THAM GIA BÀN GIAO
 
 ### 1.1. Bên Bàn Giao (Ban Phát Triển Dự Án — Nhóm N2)
-* **Trưởng nhóm / Kỹ sư DevOps & Tích hợp (TV1):** Thắng Nguyễn Minh (`thangnm7509@ut.edu.vn`) — Phụ trách chung & Đóng gói phát hành.
-* **Kỹ sư Chuỗi cung ứng & Kho (TV2):** Nguyễn Thịnh (`nguyenthinhk52005`) — Phụ trách Mua hàng (Purchase) & Tồn kho (Stock).
-* **Kỹ sư Bán lẻ & POS (TV3):** Đoàn Tấn Phúc (`tanphuc2005`) — Phụ trách Điểm bán lẻ POS & Sơ đồ bàn ăn.
-* **Kỹ sư Vận hành Bếp (TV4):** Phan Bá Thìn (`phanthink5`) — Phụ trách Màn hình điều phối Bếp KDS.
-* **Kỹ sư Đặt cơm & Mobile UX (TV5):** Văn Tạ Huy Thiên (`huthien2005`) — Phụ trách Đặt cơm trực tuyến & Mã QR/PIN.
+* **Trưởng nhóm / Kỹ sư DevOps & Tích hợp (TV1):** Thắng Nguyễn Minh (`thangnm7509@ut.edu.vn` / `thangvn0987`) — Phụ trách Kiến trúc, DevOps, Tích hợp E2E & Đóng gói phát hành (`KAN-118`).
+* **Kỹ sư Mua hàng & Tồn kho (TV2):** Trọng Nghĩa (`TN-Kieran`) — Phụ trách phân hệ Mua hàng (`purchase`) & Tồn kho (`stock`) (`KAN-119`).
+* **Kỹ sư Bán lẻ POS & Báo cáo (TV3):** Văn Tạ Huy Thiên (`TaHuyThienVan`) — Phụ trách Điểm bán lẻ POS Restaurant, sơ đồ bàn ăn & Báo cáo đối soát (`KAN-120`).
+* **Kỹ sư Backend Odoo & Đặt suất ăn (TV4):** Dịch Viết Đức (`dichvietduc2005`) — Phụ trách mô hình dữ liệu `addons/canteen_management/models/`, ca ăn, đặt suất ăn & concurrency locking (`KAN-121`).
+* **Kỹ sư UI, Bảo mật & Kiểm thử QA (TV5):** Huỳnh Anh Phú (`AnhPhu2306`) — Phụ trách giao diện Views/Menus, ma trận phân quyền Odoo 20 (`security/`), kiểm thử tự động & UAT (`KAN-122`).
+* **Quản trị Repository & Điều phối dự án:** Nguyễn Hoàng Gia Thịnh (`ThinhNguyen2005` / `nguyenthinhk52005@gmail.com`) — Repository Owner (`ThinhNguyen2005/uth-canteen-erp`) & Quản trị Jira dự án `KAN`.
 
 ### 1.2. Bên Tiếp Nhận (Hội Đồng Đánh Giá & Quản Trị Vận Hành)
 * **Đơn vị tiếp nhận:** Ban Quản trị Cơ sở vật chất & Căn tin UTH.
@@ -29,42 +30,42 @@
 
 | STT | Tên Hạng Mục Bàn Giao | Vị Trí Lưu Trữ / Đường Dẫn | Trạng Thái | Ghi Chú Kỹ Thuật |
 |:---:|:---|:---|:---:|:---|
-| 1 | Kho mã nguồn Git chính thức | [GitHub Repository](https://github.com/ThinhNguyen2005/uth-canteen-erp) | **SẴN SÀNG MERGE** | Nhánh `feature/ERP-12-readme-slide-handover` đã hoàn thiện, sẵn sàng merge vào `develop` sau khi được phê duyệt |
-| 2 | Phân hệ Căn tin Odoo 20 | [addons/canteen_management/](addons/canteen_management/) | **ĐÃ BÀN GIAO** | Version `20.0.1.0.0`, License LGPL-3, 6 dependencies Odoo 20 |
-| 3 | Khai báo hạ tầng Docker Compose | [docker-compose.yml](docker-compose.yml) | **ĐÃ BÀN GIAO** | Image `postgres:16` & `odoo:20.0`, port host `8069`, healthcheck tự động |
-| 4 | Cấu hình biến môi trường mẫu | [.env.example](.env.example) | **ĐÃ BÀN GIAO** | Biến an toàn, không chứa mật khẩu thực tế |
-| 5 | Cấu hình máy chủ Odoo mẫu | [config/odoo.conf.example](config/odoo.conf.example) | **ĐÃ BÀN GIAO** | Đầy đủ `addons_path` core và extra-addons, `db_host = db` |
-| 6 | Quy tắc an toàn mã nguồn Git | [.gitignore](.gitignore) | **ĐÃ BÀN GIAO** | Chặn triệt để tệp `.env`, `odoo.conf`, tệp tạm `backups/temp_*` |
+| 1 | Kho mã nguồn Git chính thức | [GitHub Repository](https://github.com/ThinhNguyen2005/uth-canteen-erp) | **ĐÃ TÍCH HỢP (`develop`)** | Nhánh `develop` đã tích hợp nền tảng MVP v1.0.0 cùng các PR đã duyệt; đồng bộ hiệu đính đội ngũ & tài liệu theo GitFlow |
+| 2 | Phân hệ Căn tin Odoo 20 | [addons/canteen_management/](../addons/canteen_management/) | **ĐÃ BÀN GIAO** | Version `20.0.1.0.0`, License LGPL-3, 6 dependencies Odoo 20 |
+| 3 | Khai báo hạ tầng Docker Compose | [docker-compose.yml](../docker-compose.yml) | **ĐÃ BÀN GIAO** | Image `postgres:16` & `odoo:20.0`, port host `8069`, healthcheck tự động |
+| 4 | Cấu hình biến môi trường mẫu | [.env.example](../.env.example) | **ĐÃ BÀN GIAO** | Biến an toàn, không chứa mật khẩu thực tế |
+| 5 | Cấu hình máy chủ Odoo mẫu | [config/odoo.conf.example](../config/odoo.conf.example) | **ĐÃ BÀN GIAO** | Đầy đủ `addons_path` core và extra-addons, `db_host = db` |
+| 6 | Quy tắc an toàn mã nguồn Git | [.gitignore](../.gitignore) | **ĐÃ BÀN GIAO** | Chặn triệt để tệp `.env`, `odoo.conf`, tệp tạm `backups/temp_*` |
 
 ### 2.2. Gói Phát Hành CSDL & Công Cụ Tự Động Hóa (Release & Test Suites)
 
 | STT | Tên Hạng Mục Bàn Giao | Vị Trí Lưu Trữ / Đường Dẫn | Trạng Thái | Ghi Chú Kỹ Thuật |
 |:---:|:---|:---|:---:|:---|
-| 7 | Gói sao lưu CSDL chuẩn MVP | [backups/uth_canteen_db_v1.0.0_mvp.zip](backups/uth_canteen_db_v1.0.0_mvp.zip) | **ĐÃ BÀN GIAO** | Kích thước 3.79 KB; đủ `manifest.json`, `dump.sql`, `filestore/` |
-| 8 | Mã băm mật mã SHA-256 | [backups/uth_canteen_db_v1.0.0_mvp.sha256](backups/uth_canteen_db_v1.0.0_mvp.sha256) | **ĐÃ BÀN GIAO** | Mã băm cố định: `e0db1a08f36e38b89378dbe657b0b56de252073936e77e8084ed4b82c468da94` |
-| 9 | Script sao lưu Windows (PS1) | [scripts/backup_db.ps1](scripts/backup_db.ps1) | **ĐÃ BÀN GIAO** | Tự động đọc `.env`, hỗ trợ chế độ container live và `-ForceOffline` |
-| 10 | Script phục hồi Windows (PS1) | [scripts/restore_db.ps1](scripts/restore_db.ps1) | **ĐÃ BÀN GIAO** | Xác thực SHA-256, tự động ngắt lock session và khôi phục CSDL |
-| 11 | Script sao lưu POSIX (Bash) | [scripts/backup_db.sh](scripts/backup_db.sh) | **ĐÃ BÀN GIAO** | Chạy trên Linux/macOS/Docker CI |
-| 12 | Script phục hồi POSIX (Bash) | [scripts/restore_db.sh](scripts/restore_db.sh) | **ĐÃ BÀN GIAO** | Hỗ trợ nạp CSDL tự động trên Linux container |
-| 13 | Suite Kiểm thử Tích hợp E2E | [scripts/test_integration_suite.py](scripts/test_integration_suite.py) | **ĐÃ BÀN GIAO** | 29 kịch bản kiểm thử tự động đạt PASS 100% |
-| 14 | Suite Kiểm toán Release MVP | [scripts/verify_release_mvp.py](scripts/verify_release_mvp.py) | **ĐÃ BÀN GIAO** | 18 kịch bản kiểm toán đóng gói đạt PASS 100% |
-| 15 | Suite Thẩm định Bàn giao | [scripts/verify_handover_suite.py](scripts/verify_handover_suite.py) | **ĐÃ BÀN GIAO** | 15 kịch bản kiểm toán bàn giao đạt PASS 100% |
+| 7 | Gói sao lưu CSDL chuẩn MVP | [backups/uth_canteen_db_v1.0.0_mvp.zip](../backups/uth_canteen_db_v1.0.0_mvp.zip) | **ĐÃ BÀN GIAO** | Kích thước 3.79 KB; đủ `manifest.json`, `dump.sql`, `filestore/` |
+| 8 | Mã băm mật mã SHA-256 | [backups/uth_canteen_db_v1.0.0_mvp.sha256](../backups/uth_canteen_db_v1.0.0_mvp.sha256) | **ĐÃ BÀN GIAO** | Mã băm cố định: `e0db1a08f36e38b89378dbe657b0b56de252073936e77e8084ed4b82c468da94` |
+| 9 | Script sao lưu Windows (PS1) | [scripts/backup_db.ps1](../scripts/backup_db.ps1) | **ĐÃ BÀN GIAO** | Tự động đọc `.env`, hỗ trợ chế độ container live và `-ForceOffline` |
+| 10 | Script phục hồi Windows (PS1) | [scripts/restore_db.ps1](../scripts/restore_db.ps1) | **ĐÃ BÀN GIAO** | Xác thực SHA-256, tự động ngắt lock session và khôi phục CSDL |
+| 11 | Script sao lưu POSIX (Bash) | [scripts/backup_db.sh](../scripts/backup_db.sh) | **ĐÃ BÀN GIAO** | Chạy trên Linux/macOS/Docker CI |
+| 12 | Script phục hồi POSIX (Bash) | [scripts/restore_db.sh](../scripts/restore_db.sh) | **ĐÃ BÀN GIAO** | Hỗ trợ nạp CSDL tự động trên Linux container |
+| 13 | Suite Kiểm thử Tích hợp E2E | [scripts/test_integration_suite.py](../scripts/test_integration_suite.py) | **ĐÃ BÀN GIAO** | 29 kịch bản kiểm thử tự động đạt PASS 100% |
+| 14 | Suite Kiểm toán Release MVP | [scripts/verify_release_mvp.py](../scripts/verify_release_mvp.py) | **ĐÃ BÀN GIAO** | 18 kịch bản kiểm toán đóng gói đạt PASS 100% |
+| 15 | Suite Thẩm định Bàn giao | [scripts/verify_handover_suite.py](../scripts/verify_handover_suite.py) | **ĐÃ BÀN GIAO** | 15 kịch bản kiểm toán bàn giao đạt PASS 100% |
 
 ### 2.3. Hồ Sơ Tài Liệu Kỹ Thuật & Cẩm Nang Vận Hành (Documentation)
 
 | STT | Tên Tài Liệu Bàn Giao | Vị Trí Lưu Trữ / Đường Dẫn | Trạng Thái | Quy Mô / Nội Dung Chính |
 |:---:|:---|:---|:---:|:---|
-| 16 | Cẩm nang hướng dẫn tổng thể | [README.md](README.md) | **ĐÃ BÀN GIAO** | Hướng dẫn cài đặt nhanh, kiến trúc, tài khoản demo, troubleshooting |
-| 17 | Đặc tả yêu cầu phần mềm (SRS) | [docs/srs.md](docs/srs.md) | **ĐÃ BÀN GIAO** | 62 trang theo IEEE 830, mô tả 100% Use Cases 5 phân hệ |
-| 18 | Đặc tả kiến trúc hệ thống | [docs/architecture.md](docs/architecture.md) | **ĐÃ BÀN GIAO** | Sơ đồ phân tầng, thành phần Docker, luồng dữ liệu, NFR |
-| 19 | Hợp đồng kỹ thuật dữ liệu v2.0 | [docs/data-contract.md](docs/data-contract.md) | **ĐÃ BÀN GIAO** | Chuẩn hóa 100% schema trường, model names, khóa ngoại |
-| 20 | Quy chuẩn phân nhánh & Review | [docs/git-workflow.md](docs/git-workflow.md) | **ĐÃ BÀN GIAO** | Quy định GitFlow, branch naming, PR checklist và review rule |
-| 21 | Cẩm nang dữ liệu hạt giống | [docs/demo-dataset-guide.md](docs/demo-dataset-guide.md) | **ĐÃ BÀN GIAO** | Catalog 13 món, 8 bàn, 5 NCC, 10 NVL, 3 ca ăn |
-| 22 | Hướng dẫn tích hợp E2E | [docs/integration-e2e-guide.md](docs/integration-e2e-guide.md) | **ĐÃ BÀN GIAO** | Quy trình phối hợp vận hành thực tế giữa 5 thành viên |
-| 23 | Báo cáo kiểm thử tích hợp E2E | [docs/integration-test-report.md](docs/integration-test-report.md) | **ĐÃ BÀN GIAO** | Kết quả 29 ca kiểm thử tự động đạt PASS 100% |
-| 24 | Cẩm nang phát hành & phục hồi | [docs/release-mvp-guide.md](docs/release-mvp-guide.md) | **ĐÃ BÀN GIAO** | Hướng dẫn khôi phục máy chủ sạch, 18 kịch bản verify |
-| 25 | Slide thuyết trình tổng kết 3 tuần | [docs/presentation-slide-deck.md](docs/presentation-slide-deck.md) | **ĐÃ BÀN GIAO** | Bộ slide 16 trang chuẩn Marp Presentation |
-| 26 | Biên bản bàn giao và checklist | [docs/handover-checklist.md](docs/handover-checklist.md) | **ĐÃ BÀN GIAO** | Bản nghiệm thu hoàn chỉnh và ký duyệt |
+| 16 | Cẩm nang hướng dẫn tổng thể | [README.md](../README.md) | **ĐÃ BÀN GIAO** | Hướng dẫn cài đặt nhanh, kiến trúc, tài khoản demo, troubleshooting |
+| 17 | Đặc tả yêu cầu phần mềm (SRS) | [docs/srs.md](srs.md) | **ĐÃ BÀN GIAO** | 62 trang theo IEEE 830, mô tả 100% Use Cases 5 phân hệ |
+| 18 | Đặc tả kiến trúc hệ thống | [docs/architecture.md](architecture.md) | **ĐÃ BÀN GIAO** | Sơ đồ phân tầng, thành phần Docker, luồng dữ liệu, NFR |
+| 19 | Hợp đồng kỹ thuật dữ liệu v2.0 | [docs/data-contract.md](data-contract.md) | **ĐÃ BÀN GIAO** | Chuẩn hóa 100% schema trường, model names, khóa ngoại |
+| 20 | Quy chuẩn phân nhánh & Review | [docs/git-workflow.md](git-workflow.md) | **ĐÃ BÀN GIAO** | Quy định GitFlow, branch naming, PR checklist và review rule |
+| 21 | Cẩm nang dữ liệu hạt giống | [docs/demo-dataset-guide.md](demo-dataset-guide.md) | **ĐÃ BÀN GIAO** | Catalog 13 món, 8 bàn, 5 NCC, 10 NVL, 3 ca ăn |
+| 22 | Hướng dẫn tích hợp E2E | [docs/integration-e2e-guide.md](integration-e2e-guide.md) | **ĐÃ BÀN GIAO** | Quy trình phối hợp vận hành thực tế giữa 5 thành viên |
+| 23 | Báo cáo kiểm thử tích hợp E2E | [docs/integration-test-report.md](integration-test-report.md) | **ĐÃ BÀN GIAO** | Kết quả 29 ca kiểm thử tự động đạt PASS 100% |
+| 24 | Cẩm nang phát hành & phục hồi | [docs/release-mvp-guide.md](release-mvp-guide.md) | **ĐÃ BÀN GIAO** | Hướng dẫn khôi phục máy chủ sạch, 18 kịch bản verify |
+| 25 | Slide thuyết trình tổng kết 3 tuần | [docs/presentation-slide-deck.md](presentation-slide-deck.md) | **ĐÃ BÀN GIAO** | Bộ slide 16 trang chuẩn Marp Presentation |
+| 26 | Biên bản bàn giao và checklist | [docs/handover-checklist.md](handover-checklist.md) | **ĐÃ BÀN GIAO** | Bản nghiệm thu hoàn chỉnh và ký duyệt |
 
 ---
 
@@ -82,18 +83,15 @@
 - [x] **Triệt tiêu 100% bàn ảo Takeaway:** Đơn mang về bắt buộc gán `table_id=None` và `floor_id=None`.
 - [x] Hỗ trợ in hóa đơn, hiển thị địa điểm phục vụ rõ ràng và tích hợp máy quét mã vạch.
 
-### 3.3. Màn Hình Điều Phối Bếp & Quản Trị Nấu Nướng (Kitchen KDS — TV4)
-- [x] Giao diện KDS trực quan hiển thị danh sách món cần nấu theo thứ tự thời gian đặt.
-- [x] Vòng đời trạng thái món ăn 4 bước (`draft` $\rightarrow$ `confirmed` $\rightarrow$ `serving` $\rightarrow$ `done`).
-- [x] Cơ chế cảnh báo hết món tức thời: cập nhật cờ `canteen_is_out_of_stock=True` đồng bộ sang POS và Web Portal.
-- [x] Hỗ trợ gom món cùng loại (Batch Cooking) tối ưu hóa năng suất ca bếp.
+### 3.3. Phân hệ Backend Odoo, Điều Phối Bếp & Đặt Suất Ăn (Backend Models — TV4)
+- [x] Đã tích hợp 3 mô hình cốt lõi vào nhánh `develop`: ca ăn (`canteen.meal.slot`), đặt suất ăn (`canteen.meal.booking`) và mở rộng hồ sơ đối tác sinh viên (`res.partner`) tại `addons/canteen_management/models/`.
+- [x] Đã chuẩn hóa hợp đồng vòng đời trạng thái món ăn (`draft` $\rightarrow$ `confirmed` $\rightarrow$ `serving` $\rightarrow$ `done`), cờ báo hết món tức thời (`canteen_is_out_of_stock=True`) và kiểm định **An ninh Zero-Trust** chống giả mạo giá (`Price Tampering`) trong bộ kiểm thử tích hợp.
+- [ ] Hoàn tất merge workflow actions (`KAN-163`), guard ràng buộc (`KAN-164`) và khóa đồng thời `SELECT FOR UPDATE` (`KAN-165`) vào `develop` *(đang rà soát tại các PR `#40`, `#44`–`#47` của TV4)*.
 
-### 3.4. Đặt Cơm Trực Tuyến & Gọi Món Bằng Mã QR (Meal Booking — TV5)
-- [x] Danh mục 13 món ăn thành phẩm hiển thị đầy đủ hình ảnh, giá bán và mô tả món.
-- [x] Phân chia 3 ca ăn rõ ràng: Ca Trưa 1 (11h-12h), Ca Trưa 2 (12h-13h), Ca Chiều (17h-18h30).
-- [x] Thuật toán sinh mã QR động chứa mã băm an toàn và mã PIN bí mật 4 chữ số nhận món.
-- [x] **An ninh Zero-Trust:** Cơ chế xác thực giá tự động phía máy chủ, chặn đứng hành vi giả mạo giá (`Price Tampering`).
-- [x] Xử lý an toàn đơn đặt trùng hoặc tranh chấp chỗ bằng khóa đa luồng đồng thời (`ThreadPoolExecutor Lock`).
+### 3.4. Giao Diện UI, Phân Quyền Bảo Mật & Kiểm Thử (UI, Security & QA — TV5)
+- [x] Đã nạp danh mục 13 món ăn thành phẩm và 3 ca ăn (Ca Trưa 1: 11h-12h, Ca Trưa 2: 12h-13h, Ca Chiều: 17h-18h30) trong dữ liệu mẫu (`demo/canteen_demo_data.xml`) cùng khung thư mục `views/`, `security/`, `tests/`.
+- [x] Đã khởi tạo khung phân quyền Odoo 20 (`security/canteen_security.xml`, `security/ir.model.access.csv`, `security/canteen_rules.xml`) và kiểm định luồng đặt món QR/PIN, chống IDOR qua bộ kiểm thử tích hợp tự động (`scripts/test_integration_suite.py`).
+- [ ] Hoàn tất merge bộ giao diện Views/Menus chi tiết, kích hoạt bảng ACL/Record Rules thực thi trên `develop` và bộ test trong `addons/canteen_management/tests/` *(đang triển khai tại các nhánh feature của TV5)*.
 
 ### 3.5. DevOps, Tích Hợp & Đóng Gói Hệ Thống (DevOps & Integration — TV1)
 - [x] Toàn bộ 12 nhiệm vụ Jira của TV1 ([KAN-123](https://nguyenthinhk52005.atlassian.net/browse/KAN-123) đến [KAN-134](https://nguyenthinhk52005.atlassian.net/browse/KAN-134)) hoàn thành 100%.
@@ -156,4 +154,4 @@ Biên bản bàn giao này được lập thành 02 bản có giá trị pháp l
 | *(Ký, ghi rõ họ tên và đóng dấu)* | *(Ký và ghi rõ họ tên)* |
 | <br/><br/><br/><br/> | <br/><br/><br/><br/> |
 | **HỘI ĐỒNG NGHIỆM THU UTH** | **THẮNG NGUYỄN MINH** |
-| Ngày: ..... / ..... / 2026 | Ngày: 23 / 11 / 2026 |
+| Ngày: ..... / ..... / 2026 | Ngày: 28 / 11 / 2026 |
