@@ -1,0 +1,5 @@
+UAT ID,Requirement,Role,Preconditions,Steps,Expected,Actual,Tester,Date,Status,Bug ID,Evidence,Acceptance
+UAT-01,ERP-51,Manager,Addon installed,Create slot then open and close,Approved slot state transitions,,,,PENDING UAT,,,PENDING SIGN-OFF
+UAT-02,ERP-50,Cashier,Confirmed booking inside serving window,Find and serve booking,Booking becomes served,,,,PENDING UAT,,,PENDING SIGN-OFF
+UAT-03,ERP-53,Booking User,Two ordinary accounts and approved ownership,Create and inspect own booking and check isolation,Own booking visible only within policy,,,,PENDING UAT,,,PENDING SIGN-OFF
+UAT-04,ERP-54,Booking User,Full slot and confirmed booking eligible for cancellation,Check capacity warning then cancel eligible own booking,Capacity restored according to rules,,,,PENDING UAT,,,PENDING SIGN-OFF
